@@ -65,7 +65,9 @@ export const loadConfig = (): RelayerConfig => {
   return {
     network,
     apiUrl,
-    port: num("RELAYER_PORT", 8787),
+    // On Render/hosted platforms the port is injected as $PORT; prefer the
+    // explicit RELAYER_PORT, then fall back to PORT, then the local default.
+    port: num("RELAYER_PORT", num("PORT", 8787)),
     redisUrl: process.env["REDIS_URL"],
 
     senderKey: need("RELAYER_PRIVATE_KEY"),

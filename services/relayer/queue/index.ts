@@ -116,7 +116,16 @@ export class MemoryQueue implements QueueDriver {
  */
 export const createBullQueue = async (redisUrl: string): Promise<QueueDriver> => {
   const { Queue, Worker } = (await import("bullmq")) as typeof import("bullmq");
-  const connection = { url: redisUrl } as unknown as { url: string };
+  const IORedis = (await import("ioredis")).default;
+  // Build a real ioredis connection from the URL STRING (ioredis has no `url`
+  // option key -- passing an object with `url` silently connects to localhost).
+  // The string form lets ioredis enable TLS for `rediss://` (e.g. Upstash), and
+  // BullMQ's blocking (Worker) connection requires maxRetriesPerRequest: null.
+  // Queue and Worker get separate connections so blocking calls can't stall the
+  // queue's own commands.
+  const makeConn = () =>
+    new IORedis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
+  const connection = makeConn();
   const queue = new Queue("stx-shield-relay", { connection: connection as never });
   const jobs = new Map<string, RelayJob>();
 
@@ -154,7 +163,7 @@ export const createBullQueue = async (redisUrl: string): Promise<QueueDriver> =>
           jobs.set(job.id, job);
           await handler(job);
         },
-        { connection: connection as never },
+        { connection: makeConn() as never },
       );
     },
     async close() {
