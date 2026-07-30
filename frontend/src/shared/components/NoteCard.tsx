@@ -23,6 +23,14 @@ export function NoteCard({
 }) {
   const id = noteKey(note, index);
   const status = note.spent ? "spent" : (note.status ?? "unspent");
+  const statusClass =
+    {
+      confirmed: "border-success/40 text-success",
+      unspent: "border-success/40 text-success",
+      pending: "border-warning/40 text-warning",
+      failed: "border-destructive/40 text-destructive",
+      spent: "text-muted-foreground",
+    }[status] ?? "text-muted-foreground";
   const interactive = Boolean(onSelect);
 
   return (
@@ -55,13 +63,7 @@ export function NoteCard({
 
       <div className="flex shrink-0 items-center gap-3">
         <div className="hidden text-right sm:block">
-          <Badge
-            variant="outline"
-            className={cn(
-              "capitalize",
-              status === "unspent" ? "border-success/40 text-success" : "text-muted-foreground",
-            )}
-          >
+          <Badge variant="outline" className={cn("capitalize", statusClass)}>
             {status}
           </Badge>
           <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(note.createdAt)}</p>

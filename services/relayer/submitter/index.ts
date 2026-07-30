@@ -13,6 +13,8 @@
 //   - The account seed lives only in the relayer's env; it is never returned.
 
 import type { RelayerConfig } from "../config/index.js";
+import type { TransactionManager } from "../transaction-manager/index.js";
+import { publishRoot } from "../root-publisher/publish-root.js";
 
 export interface SubmitRequest {
   proof: string;
@@ -41,6 +43,10 @@ export class ProofSubmitter {
     private readonly cfg: RelayerConfig,
     private readonly log: Logger,
     private readonly timeoutMs = 300_000,
+    // When provided, /submit publishes the aggregation root itself (idempotently)
+    // instead of waiting for the background poller — so the exact aggregation a
+    // user just proved into is guaranteed to reach the chain.
+    private readonly txm?: TransactionManager,
   ) {}
 
   /** Whether the relayer holds the zkVerify account needed to submit. */
@@ -111,6 +117,25 @@ export class ProofSubmitter {
     );
 
     this.log.info({ domainId, aggregationId, leafIndex: path.leafIndex }, "zkVerify: proof aggregated");
+
+    // Publish this aggregation's root on-chain now (idempotent). This is what
+    // the operation references, so doing it here guarantees it lands even if the
+    // background poller is behind or its connection dropped.
+    if (this.txm) {
+      try {
+        const res = await publishRoot(this.txm, this.cfg.apiUrl, this.cfg.deployer, {
+          domainId,
+          aggregationId,
+          root: path.root,
+          leafCount: path.numberOfLeaves,
+        });
+        if (res.published) this.log.info({ aggregationId, txid: res.txid }, "zkVerify: root published");
+      } catch (e) {
+        // Non-fatal: the poller (or a retry) can still publish it.
+        this.log.warn({ aggregationId, err: String(e) }, "zkVerify: root publish from /submit failed");
+      }
+    }
+
     return {
       domainId,
       aggregationId,

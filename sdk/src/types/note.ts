@@ -21,6 +21,9 @@ export interface ShieldNote {
   amount: bigint;
   /** True once the note has been spent (transfer/split/merge/withdraw). */
   spent: boolean;
+  /** On-chain confirmation state: "pending" | "confirmed" | "failed".
+   *  Undefined for locally-created notes not yet re-fetched from the API. */
+  status?: string;
   /** Secret material for spending. Local-only; never serialized to the wire. */
   readonly secret: NoteSecret;
 }

@@ -73,6 +73,12 @@ export const notes = pgTable(
     txid: text("txid").notNull(),
     leafIndex: integer("leaf_index"),
     type: text("type").notNull(), // shield | transfer | split | merge
+    // pending  = owner registered the note but it is not yet observed on chain
+    // confirmed = the indexer has seen the commitment on chain (root/txid filled)
+    // failed    = a pending note whose tx never landed (derived when stale)
+    // Default confirmed: indexer inserts are on-chain facts; only owner-supplied
+    // pre-confirmation rows override this to "pending".
+    status: text("status").notNull().default("confirmed"),
     spent: boolean("spent").notNull().default(false),
     createdAt: now(),
   },
@@ -80,6 +86,7 @@ export const notes = pgTable(
     index("notes_wallet_idx").on(t.wallet),
     index("notes_root_idx").on(t.root),
     index("notes_type_idx").on(t.type),
+    index("notes_status_idx").on(t.status),
   ],
 );
 

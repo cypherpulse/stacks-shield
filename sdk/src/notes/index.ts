@@ -104,7 +104,7 @@ export const discoverNotes = (
     };
     // Confirm the decrypted secret actually reproduces the on-chain commitment.
     if (toHex32(commitmentOfSecret(payload.amount, secret)) !== normalize(r.commitment)) continue;
-    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, spent: false, secret });
+    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, spent: false, status: r.status, secret });
   }
   return out;
 };

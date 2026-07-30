@@ -32,7 +32,17 @@ export const insertNote = async (v: {
   leafIndex: number | null;
   type: "shield" | "transfer" | "split" | "merge";
 }): Promise<void> => {
-  await db.insert(notes).values(v).onConflictDoNothing({ target: notes.commitment });
+  // The commitment is now an on-chain fact. If an owner pre-registered it while
+  // pending, fill in root/txid/leafIndex and flip it to confirmed -- WITHOUT
+  // touching their ciphertext/wallet. If it already exists confirmed, this is a
+  // harmless idempotent re-set.
+  await db
+    .insert(notes)
+    .values({ ...v, status: "confirmed" })
+    .onConflictDoUpdate({
+      target: notes.commitment,
+      set: { root: v.root, txid: v.txid, leafIndex: v.leafIndex, type: v.type, status: "confirmed" },
+    });
 };
 
 /**

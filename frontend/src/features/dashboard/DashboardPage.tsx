@@ -48,9 +48,13 @@ function DashboardContent() {
   const { data: stats } = useStats();
 
   const unspent = (notes ?? []).filter((n) => !n.spent);
-  const balance = unspent.reduce((sum, n) => sum + toStx(n.amount), 0);
+  // Balance counts ONLY notes confirmed on chain — a shield/transfer that was
+  // submitted but not yet (or never) confirmed must not inflate the balance.
+  const confirmed = unspent.filter((n) => n.status === "confirmed");
+  const pendingNotes = unspent.filter((n) => n.status === "pending");
+  const balance = confirmed.reduce((sum, n) => sum + toStx(n.amount), 0);
   const entries = history ?? [];
-  const pending = entries.filter((e) => (e.status ?? "").toLowerCase() === "pending").length;
+  const pending = pendingNotes.length;
 
   const byDay = Object.entries(
     entries.reduce<Record<string, number>>((acc, e) => {
@@ -78,8 +82,8 @@ function DashboardContent() {
           loading={notesLoading}
         />
         <StatCard
-          label="Total notes"
-          value={formatNumber(unspent.length)}
+          label="Confirmed notes"
+          value={formatNumber(confirmed.length)}
           icon={Coins}
           accent="teal"
           loading={notesLoading}
@@ -92,11 +96,12 @@ function DashboardContent() {
           loading={historyLoading}
         />
         <StatCard
-          label="Pending"
+          label="Pending notes"
           value={formatNumber(pending)}
           icon={Layers}
-          accent="muted"
-          loading={historyLoading}
+          accent={pending > 0 ? "primary" : "muted"}
+          hint={pending > 0 ? "awaiting on-chain confirmation" : undefined}
+          loading={notesLoading}
         />
       </div>
 

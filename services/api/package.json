@@ -6,12 +6,13 @@
   "description": "STX Shield public read-only API + indexers (Phase 9). Never holds keys, never proves, never signs.",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "node --env-file-if-exists=.env dist/index.js",
     "build": "tsc -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:migrate:status": "tsx --env-file-if-exists=.env scripts/migrate-status.ts",
     "indexer": "tsx src/indexers/runner.ts",
     "test": "vitest run"
   },

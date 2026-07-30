@@ -9,6 +9,15 @@ import { aggregations, notes, roots, stats, transactions, fees } from "../db/sch
 
 const MICRO = 1_000_000;
 
+// A pending, never-confirmed note this old is treated as failed (its tx almost
+// certainly reverted or was dropped).
+const STALE_PENDING_MS = 45 * 60 * 1000;
+const deriveStatus = (status: string, root: string, createdAt: Date): string => {
+  if (status !== "pending") return status;
+  if (!root && Date.now() - createdAt.getTime() > STALE_PENDING_MS) return "failed";
+  return "pending";
+};
+
 export const clampLimit = (v: unknown, def = 50, max = 200): number => {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return def;
@@ -41,13 +50,13 @@ export const getFees = async () => {
 /** Public encrypted-note feed for local trial-decryption (never reveals owners). */
 export const getEncryptedNotes = async (limit: number, offset: number) => {
   const rows = await db
-    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, createdAt: notes.createdAt })
+    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, status: notes.status, createdAt: notes.createdAt })
     .from(notes)
     .where(isNotNull(notes.ciphertext))
     .orderBy(desc(notes.createdAt))
     .limit(limit)
     .offset(offset);
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  return rows.map((r) => ({ ...r, status: deriveStatus(r.status, r.root, r.createdAt), createdAt: r.createdAt.toISOString() }));
 };
 
 export const getRoots = async (limit: number, offset: number) => {
@@ -115,11 +124,11 @@ const mapTx = (t: typeof transactions.$inferSelect) => ({
 // ---- per-wallet (authenticated) ----
 export const getWalletNotes = async (wallet: string) => {
   const rows = await db
-    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, type: notes.type, spent: notes.spent, createdAt: notes.createdAt })
+    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, type: notes.type, status: notes.status, spent: notes.spent, createdAt: notes.createdAt })
     .from(notes)
     .where(eq(notes.wallet, wallet))
     .orderBy(desc(notes.createdAt));
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
+  return rows.map((r) => ({ ...r, status: deriveStatus(r.status, r.root, r.createdAt), createdAt: r.createdAt.toISOString() }));
 };
 
 export const getWalletHistory = async (wallet: string) => {
@@ -146,7 +155,7 @@ export const registerWalletNote = async (
   // Not yet indexed on chain -- store as a pending owner-supplied row.
   await db
     .insert(notes)
-    .values({ commitment: v.commitment, ciphertext: v.ciphertext, wallet, root: "", txid: "", type: "shield" })
+    .values({ commitment: v.commitment, ciphertext: v.ciphertext, wallet, root: "", txid: "", type: "shield", status: "pending" })
     .onConflictDoUpdate({ target: notes.commitment, set: { wallet, ciphertext: v.ciphertext } });
   return { updated: false };
 };

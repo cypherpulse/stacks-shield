@@ -78,7 +78,7 @@ const main = async (): Promise<void> => {
 
   // Browser-facing zkVerify proof submitter (POST /submit). Only functional
   // when the relayer holds a zkVerify account (ZKVERIFY_SEED_PHRASE).
-  const submitter = new ProofSubmitter(cfg, logger, cfg.submitTimeoutMs);
+  const submitter = new ProofSubmitter(cfg, logger, cfg.submitTimeoutMs, service.transactionManager);
 
   const app = await buildServer(service, {
     submitter,

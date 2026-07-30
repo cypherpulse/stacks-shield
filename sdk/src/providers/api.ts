@@ -13,6 +13,8 @@ export interface EncryptedNoteRecord {
   ciphertext: string | null;
   root: string;
   txid: string;
+  /** pending | confirmed | failed — on-chain confirmation state of the note. */
+  status?: string;
 }
 
 export interface ApiProviderOptions {
