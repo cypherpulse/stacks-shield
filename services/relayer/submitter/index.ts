@@ -66,9 +66,9 @@ export class ProofSubmitter {
       this.sessionP = (async () => {
         const zk = await import("zkverifyjs");
         const start = zk.zkVerifySession.start() as any;
-        const builder = this.cfg.zkVerifyEndpoint
-          ? start.Custom({ websocket: this.cfg.zkVerifyEndpoint })
-          : start.Volta();
+        // Use the custom API endpoint only when ZKVERIFY_USE_API is on.
+        const ep = this.cfg.zkVerifyUseApi ? this.cfg.zkVerifyEndpoint : undefined;
+        const builder = ep ? start.Custom({ websocket: ep }) : start.Volta();
         return builder.withAccount(this.cfg.zkVerifySeed);
       })().catch((e) => {
         // Reset so a later request can retry a fresh session.

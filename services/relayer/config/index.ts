@@ -28,6 +28,12 @@ export interface RelayerConfig {
 
   // zkVerify root-publication poller
   zkVerifyEndpoint?: string;
+  // ZKVERIFY_USE_API: true = connect through the custom ZKVERIFY_ENDPOINT (e.g.
+  // an Ankr API-key RPC); false = ignore it and use the built-in public Volta.
+  zkVerifyUseApi: boolean;
+  // ZKVERIFY_USE_SUBSCRIPTIONS: true = try live event subscriptions; false =
+  // poll only (Volta's public RPC does not expose the subscription API).
+  zkVerifyUseSubscriptions: boolean;
   zkVerifySeed?: string;
   zkVerifyDomainIds: number[];
   pollZkVerifyMs: number; // 10_000
@@ -86,7 +92,11 @@ export const loadConfig = (): RelayerConfig => {
     pollMs: num("RELAYER_POLL_MS", 30_000),
     timeoutMs: num("RELAYER_TIMEOUT_MS", 900_000),
 
-    zkVerifyEndpoint: process.env["ZKVERIFY_ENDPOINT"],
+    zkVerifyEndpoint: process.env["ZKVERIFY_ENDPOINT"]?.trim() || undefined,
+    // Default: use the API endpoint if one is provided, otherwise built-in Volta.
+    zkVerifyUseApi:
+      str("ZKVERIFY_USE_API", process.env["ZKVERIFY_ENDPOINT"]?.trim() ? "true" : "false") !== "false",
+    zkVerifyUseSubscriptions: str("ZKVERIFY_USE_SUBSCRIPTIONS", "false") === "true",
     zkVerifySeed: process.env["ZKVERIFY_SEED_PHRASE"],
     zkVerifyDomainIds: str("ZKVERIFY_DOMAIN_ID", "0")
       .split(",")

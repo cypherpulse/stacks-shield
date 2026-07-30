@@ -75,10 +75,10 @@ export class ZkVerifyPoller {
     try {
       // zkverifyjs' fluent builder types vary across versions; drive it loosely.
       const start = zk.zkVerifySession.start() as unknown as Record<string, (...a: unknown[]) => unknown>;
+      // Use the custom API endpoint only when ZKVERIFY_USE_API is on.
+      const ep = this.cfg.zkVerifyUseApi ? this.cfg.zkVerifyEndpoint : undefined;
       const builder = (
-        this.cfg.zkVerifyEndpoint
-          ? start["Custom"]?.({ websocket: this.cfg.zkVerifyEndpoint })
-          : start["Volta"]?.()
+        ep ? start["Custom"]?.({ websocket: ep }) : start["Volta"]?.()
       ) as Record<string, (...a: unknown[]) => Promise<unknown>>;
       this.session = this.cfg.zkVerifySeed
         ? await builder["withAccount"]!(this.cfg.zkVerifySeed)
@@ -97,7 +97,7 @@ export class ZkVerifyPoller {
       close?: () => Promise<void>;
     };
 
-    if (typeof session.subscribeToNewAggregationReceipts === "function") {
+    if (this.cfg.zkVerifyUseSubscriptions && typeof session.subscribeToNewAggregationReceipts === "function") {
       for (const domainId of this.cfg.zkVerifyDomainIds) {
         session.subscribeToNewAggregationReceipts((ev) => {
           const agg = toAggregationRoot(domainId, ev);
@@ -106,7 +106,8 @@ export class ZkVerifyPoller {
       }
       this.log.info({ domains: this.cfg.zkVerifyDomainIds }, "zkVerify: subscribed to aggregation receipts");
     } else {
-      this.log.info({ everyMs: this.cfg.pollZkVerifyMs }, "zkVerify: subscription API unavailable, polling");
+      const why = this.cfg.zkVerifyUseSubscriptions ? "subscription API unavailable" : "subscriptions disabled";
+      this.log.info({ everyMs: this.cfg.pollZkVerifyMs, why }, "zkVerify: polling for aggregation roots");
       void this.pollLoop();
     }
   }
