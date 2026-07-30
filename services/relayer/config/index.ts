@@ -33,6 +33,12 @@ export interface RelayerConfig {
   pollZkVerifyMs: number; // 10_000
   publishRoots: boolean;
 
+  // POST /submit (proof submitter for the frontend)
+  corsOrigins: string[] | true;
+  submitTimeoutMs: number; // 300_000
+  submitRateMax: number; // 20
+  submitRateWindowMs: number; // 60_000
+
   // Multi-relayer failover
   peers: string[]; // other relayer base URLs
   relayerId: string;
@@ -89,7 +95,21 @@ export const loadConfig = (): RelayerConfig => {
     pollZkVerifyMs: num("ZKVERIFY_POLL_MS", 10_000),
     publishRoots: str("RELAYER_PUBLISH_ROOTS", "true") !== "false",
 
+    // POST /submit (browser-facing proof submitter)
+    corsOrigins: parseCorsOrigins(),
+    submitTimeoutMs: num("SUBMIT_TIMEOUT_MS", 300_000),
+    submitRateMax: num("SUBMIT_RATE_MAX", 20),
+    submitRateWindowMs: num("SUBMIT_RATE_WINDOW_MS", 60_000),
+
     peers: parsePeers(),
     relayerId: str("RELAYER_ID", str("RELAYER_ADDRESS", "relayer")),
   };
+};
+
+/** CORS allow-list for /submit. Blank/`*` reflects any origin (public dApp);
+ *  a CSV of origins locks it down. */
+const parseCorsOrigins = (): string[] | true => {
+  const raw = process.env["CORS_ORIGINS"];
+  if (!raw || !raw.trim() || raw.trim() === "*") return true;
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
 };

@@ -132,6 +132,14 @@ new STXShield({ network: "testnet" });
 new STXShield({ network: "mainnet", apiUrl, relayerUrls });  // override endpoints
 ```
 
+`network: "testnet"` defaults to the live deployment:
+
+- API — `https://stx-shield-api.onrender.com`
+- Relayer — `https://stx-shield-relayer.onrender.com`
+
+Override either with `apiUrl` / `relayerUrls` (pass several relayer URLs for
+censorship-resistant failover).
+
 ## 12. Examples
 
 See [`examples/`](./examples): `node.ts`, `react.tsx`, `nextjs.ts`, `vite.ts`.

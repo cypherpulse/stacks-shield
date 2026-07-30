@@ -7,11 +7,12 @@
 
 import { poseidon2, poseidon4 } from "poseidon-lite";
 import { keccak_256 } from "@noble/hashes/sha3.js";
-import { createHash } from "node:crypto";
+import { sha256 as nobleSha256 } from "@noble/hashes/sha256.js";
 import { BN254_FIELD_MODULUS, type Bytes, type Bytes32, type Hex } from "../types.js";
 
-export const sha256 = (data: Bytes): Bytes32 =>
-  new Uint8Array(createHash("sha256").update(data).digest());
+// @noble/hashes is isomorphic (Node + browser) and byte-identical to Node's
+// crypto.createHash("sha256"), so the SDK runs unchanged in the browser.
+export const sha256 = (data: Bytes): Bytes32 => new Uint8Array(nobleSha256(data));
 
 /** keccak256 — the hash zkVerify's aggregation Merkle trees use, and the one
  *  `zk-verifier.clar` uses for statement leaves and path verification.

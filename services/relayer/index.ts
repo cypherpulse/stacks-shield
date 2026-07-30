@@ -15,6 +15,7 @@ import { RelayerService } from "./services/relayer-service.js";
 import { createBullQueue, MemoryQueue } from "./queue/index.js";
 import { loadConfig } from "./config/index.js";
 import { ZkVerifyPoller } from "./root-publisher/poll-zkverify.js";
+import { ProofSubmitter } from "./submitter/index.js";
 
 const logger = pino({
   level: process.env["LOG_LEVEL"] ?? "info",
@@ -47,7 +48,15 @@ const main = async (): Promise<void> => {
   const jitterMs = cfg.peers.length > 0 ? Math.floor(Math.random() * 3_000) : 0;
   setTimeout(() => void poller.start(), jitterMs);
 
-  const app = await buildServer(service);
+  // Browser-facing zkVerify proof submitter (POST /submit). Only functional
+  // when the relayer holds a zkVerify account (ZKVERIFY_SEED_PHRASE).
+  const submitter = new ProofSubmitter(cfg, logger, cfg.submitTimeoutMs);
+
+  const app = await buildServer(service, {
+    submitter,
+    corsOrigins: cfg.corsOrigins,
+    submitRate: { max: cfg.submitRateMax, windowMs: cfg.submitRateWindowMs },
+  });
   await app.listen({ port: cfg.port, host: "0.0.0.0" });
 
   const info = service.info();
@@ -67,6 +76,7 @@ const main = async (): Promise<void> => {
   const shutdown = async (sig: string) => {
     logger.info({ sig }, "relayer: shutting down");
     await poller.stop();
+    await submitter.stop();
     await app.close();
     await queue.close();
     process.exit(0);

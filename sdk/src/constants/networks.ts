@@ -15,8 +15,8 @@ export interface NetworkDefaults {
 
 export const NETWORKS: Record<Network, NetworkDefaults> = {
   testnet: {
-    apiUrl: "https://api.stxshield.testnet",
-    relayerUrls: ["https://relayer.stxshield.testnet"],
+    apiUrl: "https://stx-shield-api.onrender.com",
+    relayerUrls: ["https://stx-shield-relayer.onrender.com"],
     // The live testnet deployment.
     deployer: "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH",
     hiroApiUrl: "https://api.testnet.hiro.so",
