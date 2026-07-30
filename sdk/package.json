@@ -1,0 +1,68 @@
+{
+  "name": "@stx-shield/sdk",
+  "version": "1.0.0",
+  "description": "Privacy for STX in minutes. Shield, transfer, split, merge and withdraw STX with zero-knowledge proofs — without touching Noir, zkVerify, Merkle trees, nullifiers or relayers.",
+  "license": "MIT",
+  "author": "STX Shield",
+  "homepage": "https://github.com/stx-shield/sdk",
+  "repository": { "type": "git", "url": "https://github.com/stx-shield/sdk.git" },
+  "keywords": ["stacks", "stx", "privacy", "zero-knowledge", "zk", "shielded", "noir", "ultrahonk", "zkverify"],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "require": "./dist/node.cjs"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.js",
+      "require": "./dist/web.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^1.0.0",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.6.1",
+    "@stacks/encryption": "^7.0.0",
+    "@stacks/transactions": "^7.0.0",
+    "poseidon-lite": "^0.3.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@aztec/bb.js": "3.0.0-nightly.20260102",
+    "@noir-lang/noir_js": "1.0.0-beta.18",
+    "@stacks/connect": "^8.0.0",
+    "zkverifyjs": "^3.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@aztec/bb.js": { "optional": true },
+    "@noir-lang/noir_js": { "optional": true },
+    "@stacks/connect": { "optional": true },
+    "zkverifyjs": { "optional": true }
+  },
+  "devDependencies": {
+    "@stacks/connect": "^8.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

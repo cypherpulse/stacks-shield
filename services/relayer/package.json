@@ -1,0 +1,29 @@
+{
+  "name": "@stx-shield/relayer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "STX Shield relayer (Phase 10). A trustless liveness component: publishes zkVerify roots and submits user operations. Never verifies proofs, holds secrets, owns notes, or censors.",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@stacks/transactions": "^7.0.0",
+    "bullmq": "^5.80.9",
+    "fastify": "^5.10.0",
+    "pino": "^9.5.0",
+    "zod": "^4.4.3",
+    "zkverifyjs": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

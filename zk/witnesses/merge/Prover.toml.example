@@ -1,0 +1,39 @@
+# Example witness for the merge circuit (2 notes -> 1 note: 40 + 60 -> 100).
+# Public fields MUST match split-merge-manager's merge public-inputs tuple.
+
+# ---- public ----
+op = "0x05"
+old_note_1 = "0x..."
+nullifier_1 = "0x..."          # Poseidon(old_note_1, owner_sk_1)
+old_note_2 = "0x..."
+nullifier_2 = "0x..."          # Poseidon(old_note_2, owner_sk_2)
+commitment = "0x..."           # merged output note commitment
+owner_commitment = "0x..."     # Poseidon(pk_x, pk_y) of the recipient
+merkle_root = "0x..."
+circuit_version = "0x01"
+
+# ---- private witness ----
+owner_sk_1 = "0x..."
+merkle_index_1 = [0, 0, 1, ...]
+merkle_siblings_1 = ["0x...", ...]
+owner_sk_2 = "0x..."
+merkle_index_2 = [1, 0, 0, ...]
+merkle_siblings_2 = ["0x...", ...]
+
+[input_1]
+amount = "0x28"                # 40
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."
+
+[input_2]
+amount = "0x3c"                # 60
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."
+
+[output]
+amount = "0x64"                # 100
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.git
+**/target
+**/.vitest-tmp
+**/*.log
+.env
+.env.*
+!.env.*.example
+zk/circuits/**/target
+lcov.info
+costs-reports.json

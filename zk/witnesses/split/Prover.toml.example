@@ -1,0 +1,39 @@
+# Example witness for the split circuit (1 note -> 2 notes: 100 -> 40 + 60).
+# Public fields (op..circuit_version) MUST match split-merge-manager's
+# public-inputs tuple. Private fields carry the amounts/secrets that never
+# leave the prover. Field values shown are illustrative hex placeholders;
+# the SDK fills real Poseidon commitments / nullifiers / Merkle paths.
+
+# ---- public ----
+op = "0x04"
+old_note = "0x..."             # Poseidon commitment of the input note
+nullifier = "0x..."            # Poseidon(old_note, owner_sk)
+commitment_1 = "0x..."         # first output note commitment
+owner_commitment_1 = "0x..."   # Poseidon(pk_x, pk_y) of recipient 1
+commitment_2 = "0x..."         # second output note commitment
+owner_commitment_2 = "0x..."   # Poseidon(pk_x, pk_y) of recipient 2
+merkle_root = "0x..."          # current tree root
+circuit_version = "0x01"
+
+# ---- private witness ----
+owner_sk = "0x..."             # spender's secret (proves ownership)
+merkle_index = [0, 1, 0, ...]  # TREE_DEPTH (20) bits
+merkle_siblings = ["0x...", ...] # TREE_DEPTH sibling hashes
+
+[input]
+amount = "0x64"                # 100
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."
+
+[out_1]
+amount = "0x28"                # 40
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."
+
+[out_2]
+amount = "0x3c"                # 60
+owner_pk_x = "0x..."
+owner_pk_y = "0x..."
+blinding = "0x..."

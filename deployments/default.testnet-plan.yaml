@@ -1,0 +1,52 @@
+id: 0
+name: Testnet deployment
+network: testnet
+stacks-node: https://api.testnet.hiro.so
+bitcoin-node: http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332
+plan:
+  batches:
+  - id: 0
+    transactions:
+    - transaction-type: contract-publish
+      contract-name: privacy-registry
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 483540
+      path: contracts/privacy-registry.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: note-manager
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 221880
+      path: contracts/note-manager.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: protocol-fees
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 168240
+      path: contracts/protocol-fees.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: zk-verifier
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 245020
+      path: contracts/zk-verifier.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: privacy-pool
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 198420
+      path: contracts/privacy-pool.clar
+      anchor-block-only: true
+      clarity-version: 3
+    - transaction-type: contract-publish
+      contract-name: split-merge-manager
+      expected-sender: STS8B4P8H975AQ982AVGNPPDDAJTK0A1Y524N6W3
+      cost: 157380
+      path: contracts/split-merge-manager.clar
+      anchor-block-only: true
+      clarity-version: 3
+    epoch: '3.1'

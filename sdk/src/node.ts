@@ -1,0 +1,37 @@
+// =============================================================================
+// @stx-shield/sdk/node -- Node convenience entry
+// =============================================================================
+// Loads circuit artifacts from disk and builds the (validated) bb.js engine.
+//   import { createNodeEngine } from "@stx-shield/sdk/node";
+//   const shield = new STXShield({ network: "testnet", signer,
+//     proofEngine: createNodeEngine({ circuitsDir }), zkVerify: { seed } });
+
+import { readFile } from "node:fs/promises";
+import { createBbjsEngine, type CircuitName, type CompiledCircuit } from "./proving/bbjs.js";
+import type { ProofEngine } from "./proving/engine.js";
+
+const PKG: Record<CircuitName, string> = {
+  shield: "shield/target/shield_note.json",
+  transfer: "transfer/target/transfer_note.json",
+  split: "split/target/split_note.json",
+  merge: "merge/target/merge_note.json",
+  withdraw: "withdraw/target/withdraw_note.json",
+  keygen: "keygen/target/keygen.json",
+};
+
+export interface NodeEngineOptions {
+  /** Path to the compiled circuits root (contains shield/, transfer/, ...). */
+  circuitsDir: string;
+  threads?: number;
+}
+
+/** Build the bb.js proof engine, loading artifacts from `circuitsDir`. */
+export const createNodeEngine = (opts: NodeEngineOptions): ProofEngine =>
+  createBbjsEngine({
+    threads: opts.threads,
+    loadArtifact: async (name: CircuitName): Promise<CompiledCircuit> =>
+      JSON.parse(await readFile(`${opts.circuitsDir}/${PKG[name]}`, "utf8")) as CompiledCircuit,
+  });
+
+export { createBbjsEngine } from "./proving/bbjs.js";
+export type { CircuitName, CompiledCircuit, BbjsEngineOptions } from "./proving/bbjs.js";

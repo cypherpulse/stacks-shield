@@ -1,0 +1,95 @@
+# =============================================================================
+# STX Shield services -- api + relayer + postgres + redis
+# =============================================================================
+#   cp services/api/.env.api.example        services/api/.env.api
+#   cp services/relayer/.env.relayer.example services/relayer/.env.relayer
+#   # edit RELAYER_PRIVATE_KEY / RELAYER_ADDRESS / JWT_SECRET, then:
+#   docker compose up --build
+
+name: stx-shield
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stxshield
+      POSTGRES_PASSWORD: stxshield
+      POSTGRES_DB: stxshield
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stxshield"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: api
+    restart: unless-stopped
+    env_file:
+      - services/api/.env.api
+    environment:
+      NODE_ENV: production
+      API_PORT: "8888"
+      DATABASE_URL: postgres://stxshield:stxshield@postgres:5432/stxshield
+    # Apply the schema, then start the API + indexers.
+    command: ["sh", "-c", "pnpm exec drizzle-kit push && node dist/index.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8888/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  relayer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: relayer
+    restart: unless-stopped
+    env_file:
+      - services/relayer/.env.relayer
+    environment:
+      NODE_ENV: production
+      RELAYER_PORT: "8787"
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8787:8787"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:

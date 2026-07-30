@@ -1,0 +1,6 @@
+[package]
+name = "keygen"
+type = "bin"
+authors = ["STX Shield"]
+
+[dependencies]

@@ -1,0 +1,7 @@
+[package]
+name = "merge_note"
+type = "bin"
+authors = ["STX Shield"]
+
+[dependencies]
+stx_shield_lib = { path = "../lib" }
