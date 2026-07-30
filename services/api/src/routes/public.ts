@@ -27,6 +27,10 @@ export const registerPublicRoutes = (app: FastifyInstance): void => {
     return { results: await q.getEncryptedNotes(limit, offset), limit, offset };
   });
 
+  // ALL commitments in leaf-index order — clients rebuild the commitment tree
+  // from this to build spend membership proofs.
+  app.get("/commitments", async () => ({ results: await q.getAllCommitments() }));
+
   app.get("/roots", async (req) => {
     const { limit, offset } = pagination(req.query);
     return { results: await q.getRoots(limit, offset), limit, offset };

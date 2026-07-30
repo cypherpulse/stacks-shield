@@ -3,7 +3,7 @@
 // =============================================================================
 // Returns plain JSON-safe objects (no BigInt) for the routes.
 
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { aggregations, notes, roots, stats, transactions, fees } from "../db/schema.js";
 
@@ -57,6 +57,20 @@ export const getEncryptedNotes = async (limit: number, offset: number) => {
     .limit(limit)
     .offset(offset);
   return rows.map((r) => ({ ...r, status: deriveStatus(r.status, r.root, r.createdAt), createdAt: r.createdAt.toISOString() }));
+};
+
+/**
+ * ALL on-chain commitments in leaf-index order. Clients rebuild the commitment
+ * tree from this to produce membership proofs for spends. Only indexer-confirmed
+ * rows (leafIndex set) are returned, never pending owner registrations.
+ */
+export const getAllCommitments = async () => {
+  const rows = await db
+    .select({ commitment: notes.commitment, leafIndex: notes.leafIndex })
+    .from(notes)
+    .where(isNotNull(notes.leafIndex))
+    .orderBy(asc(notes.leafIndex));
+  return rows.map((r) => ({ commitment: r.commitment, leafIndex: r.leafIndex ?? 0 }));
 };
 
 export const getRoots = async (limit: number, offset: number) => {
