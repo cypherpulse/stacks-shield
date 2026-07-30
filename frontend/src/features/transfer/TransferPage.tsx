@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { useState } from "react";
 
 import { ConnectGate } from "@/shared/components/ConnectGate";
@@ -37,15 +38,32 @@ function TransferForm() {
 
   return (
     <Card className="glass max-w-xl gap-5 p-6">
+      <div className="flex gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+        <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">You need the recipient's shield address.</p>
+          <p>
+            To receive, they must open STX Shield once, connect their wallet, and sign — that
+            derives their shield address (Settings → <span className="text-foreground">Show my
+            shield address</span>). A brand-new wallet that has never used the protocol{" "}
+            <span className="text-foreground">cannot</span> receive — there's no key to send to yet.
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="recipient">Recipient shield address</Label>
         <Input
           id="recipient"
-          placeholder="Paste the recipient's STX Shield address"
+          placeholder="Recipient's STX Shield address (not their ST… wallet address)"
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
           className="font-mono text-sm"
         />
+        <p className="text-xs text-muted-foreground">
+          This is <span className="text-foreground">not</span> a wallet (<code>ST…</code>) address.
+          The recipient shares their shield address from <span className="text-foreground">Settings → your STX Shield address</span>.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -66,15 +84,29 @@ function TransferForm() {
         )}
       </div>
 
-      <OperationProgress step={op.step} progress={op.progress} label={op.stepLabel} />
+      <OperationProgress
+        step={op.step}
+        progress={op.progress}
+        label={op.stepLabel}
+        txid={op.data?.txid}
+        successTitle="Transfer sent"
+        successDetail={`${value} STX sent privately.`}
+        onDone={() => {
+          op.reset();
+          setRecipient("");
+          setAmount("");
+        }}
+      />
 
-      <Button
-        size="lg"
-        disabled={!valid || op.isPending}
-        onClick={() => op.mutate({ amount: value, recipient: recipient.trim() })}
-      >
-        {op.isPending ? "Sending…" : "Send privately"}
-      </Button>
+      {op.step !== "done" && (
+        <Button
+          size="lg"
+          disabled={!valid || op.isPending}
+          onClick={() => op.mutate({ amount: value, recipient: recipient.trim() })}
+        >
+          {op.isPending ? "Sending…" : "Send privately"}
+        </Button>
+      )}
     </Card>
   );
 }

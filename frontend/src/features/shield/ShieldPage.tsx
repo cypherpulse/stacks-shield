@@ -56,15 +56,24 @@ function ShieldForm() {
         <Row label="Network" value="Stacks Testnet" />
       </div>
 
-      <OperationProgress step={op.step} progress={op.progress} label={op.stepLabel} />
+      <OperationProgress
+        step={op.step}
+        progress={op.progress}
+        label={op.stepLabel}
+        txid={op.data?.txid}
+        successTitle="Shield complete"
+        successDetail={`${value} STX is now shielded privately.`}
+        onDone={() => {
+          op.reset();
+          setAmount("");
+        }}
+      />
 
-      <Button
-        size="lg"
-        disabled={!valid || op.isPending}
-        onClick={() => op.mutate({ amount: value })}
-      >
-        {op.isPending ? "Shielding…" : "Shield STX"}
-      </Button>
+      {op.step !== "done" && (
+        <Button size="lg" className="w-full" disabled={!valid || op.isPending} onClick={() => op.mutate({ amount: value })}>
+          {op.isPending ? "Shielding…" : "Shield STX"}
+        </Button>
+      )}
     </Card>
   );
 }

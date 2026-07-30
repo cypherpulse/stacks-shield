@@ -58,7 +58,11 @@ export class NoteStore {
   private readonly notes = new Map<string, ShieldNote>();
 
   add(note: ShieldNote): void {
-    this.notes.set(note.commitment, note);
+    // A note that is spent locally OR per the record stays spent — a lagging
+    // re-discovery must never resurrect a spent note.
+    const prev = this.notes.get(note.commitment);
+    const spent = note.spent || Boolean(prev?.spent);
+    this.notes.set(note.commitment, spent === note.spent ? note : { ...note, spent });
   }
   get(commitment: string): ShieldNote | undefined {
     return this.notes.get(commitment);
@@ -96,7 +100,10 @@ export const discoverNotes = (
     }
     if (!payload) continue;
     const secret: NoteSecret = {
-      ownerSk: payload.ownerSk,
+      // The note is owned by whoever is decrypting it, so the spend key is THIS
+      // user's owner secret — not the (possibly zero) value the sender embedded.
+      // This is what lets a recipient spend an incoming transfer.
+      ownerSk: owner.sk,
       ownerPkX: owner.pkX,
       ownerPkY: owner.pkY,
       blinding: payload.blinding,
@@ -104,7 +111,7 @@ export const discoverNotes = (
     };
     // Confirm the decrypted secret actually reproduces the on-chain commitment.
     if (toHex32(commitmentOfSecret(payload.amount, secret)) !== normalize(r.commitment)) continue;
-    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, spent: false, status: r.status, secret });
+    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, spent: Boolean(r.spent), status: r.status, secret });
   }
   return out;
 };

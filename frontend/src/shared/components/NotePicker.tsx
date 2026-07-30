@@ -2,7 +2,6 @@ import { Inbox } from "lucide-react";
 
 import { NoteCard } from "@/shared/components/NoteCard";
 import { EmptyState, ErrorState, ListSkeleton } from "@/shared/components/States";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useNotes } from "@/features/notes/useNotes";
 import type { ShieldNote } from "@/shared/types/shield";
 import { errorMessage, noteKey } from "@/shared/utils/format";
@@ -35,25 +34,25 @@ export function NotePicker({
     );
   }
 
+  // The note list scrolls WITHIN the card (native overflow — smooth, no trap),
+  // so the rest of the page stays put while selecting.
   return (
-    <ScrollArea className="max-h-[420px] pr-2">
-      <div className="space-y-2.5">
-        {notes.map((note, i) => {
-          const id = noteKey(note, i);
-          const isSelected = selected.includes(id);
-          const blocked = multi && !isSelected && typeof max === "number" && selected.length >= max;
-          return (
-            <NoteCard
-              key={id}
-              note={note}
-              index={i}
-              selected={isSelected}
-              onSelect={blocked ? undefined : () => onToggle(id, note)}
-              className={blocked ? "opacity-50" : undefined}
-            />
-          );
-        })}
-      </div>
-    </ScrollArea>
+    <div className="-mr-1 max-h-[26rem] space-y-2.5 overflow-y-auto pr-1">
+      {notes.map((note, i) => {
+        const id = noteKey(note, i);
+        const isSelected = selected.includes(id);
+        const blocked = multi && !isSelected && typeof max === "number" && selected.length >= max;
+        return (
+          <NoteCard
+            key={id}
+            note={note}
+            index={i}
+            selected={isSelected}
+            onSelect={blocked ? undefined : () => onToggle(id, note)}
+            className={blocked ? "opacity-50" : undefined}
+          />
+        );
+      })}
+    </div>
   );
 }

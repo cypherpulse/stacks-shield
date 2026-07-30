@@ -50,7 +50,7 @@ export const getFees = async () => {
 /** Public encrypted-note feed for local trial-decryption (never reveals owners). */
 export const getEncryptedNotes = async (limit: number, offset: number) => {
   const rows = await db
-    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, status: notes.status, createdAt: notes.createdAt })
+    .select({ commitment: notes.commitment, ciphertext: notes.ciphertext, root: notes.root, txid: notes.txid, status: notes.status, spent: notes.spent, createdAt: notes.createdAt })
     .from(notes)
     .where(isNotNull(notes.ciphertext))
     .orderBy(desc(notes.createdAt))

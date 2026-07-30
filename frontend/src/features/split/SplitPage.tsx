@@ -10,7 +10,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useSplit } from "@/features/split/useSplit";
 import type { ShieldNote } from "@/shared/types/shield";
-import { toStx } from "@/shared/utils/format";
+import { formatStx, toStx } from "@/shared/utils/format";
 
 export function SplitPage() {
   return (
@@ -46,7 +46,7 @@ function SplitForm() {
         />
       </Card>
 
-      <Card className="glass gap-5 p-6">
+      <Card className="glass gap-5 p-6 lg:sticky lg:top-6 lg:self-start">
         <div className="space-y-2">
           <Label htmlFor="a">Amount A</Label>
           <Input
@@ -72,17 +72,31 @@ function SplitForm() {
           </p>
         </div>
 
-        <OperationProgress step={op.step} progress={op.progress} label={op.stepLabel} />
-
-        <Button
-          size="lg"
-          disabled={!valid || op.isPending}
-          onClick={() =>
-            selected && op.mutate({ note: selected.note, amounts: [amountA, amountB] })
+        <OperationProgress
+          step={op.step}
+          progress={op.progress}
+          label={op.stepLabel}
+          txid={op.data?.txid}
+          successTitle="Split complete"
+          successDetail={
+            selected ? `${formatStx(amountA)} + ${formatStx(amountB)} — two new notes.` : undefined
           }
-        >
-          {op.isPending ? "Splitting…" : "Split note"}
-        </Button>
+          onDone={() => {
+            op.reset();
+            setSelected(null);
+            setA("");
+          }}
+        />
+
+        {op.step !== "done" && (
+          <Button
+            size="lg"
+            disabled={!valid || op.isPending}
+            onClick={() => selected && op.mutate({ note: selected.note, amounts: [amountA, amountB] })}
+          >
+            {op.isPending ? "Splitting…" : "Split note"}
+          </Button>
+        )}
       </Card>
     </div>
   );

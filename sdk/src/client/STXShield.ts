@@ -13,6 +13,7 @@
 // ...and never sees Noir, UltraHonk, zkVerify, Merkle trees, nullifiers,
 // commitments, roots or relayers.
 
+import { Cl, hexToCV, cvToJSON } from "@stacks/transactions";
 import { CommitmentTree } from "../../merkle-tree/index.js";
 import type { SDKConfig, ResolvedConfig } from "../types/config.js";
 import type { ShieldNote, Recipient } from "../types/note.js";
@@ -31,7 +32,7 @@ import {
   NoteStore, discoverNotes, viewingKeyFromSecret, encodeAddress, decodeAddress, type ShieldAddress,
 } from "../notes/index.js";
 import { createLogger, silentLogger, type Logger } from "../utils/logger.js";
-import { ConfigError, InvalidNoteError } from "../errors/index.js";
+import { ConfigError, InvalidNoteError, RootNotFoundError } from "../errors/index.js";
 import type { ViewingKeyPair } from "../crypto/encryption.js";
 
 const STX = 1_000_000n;
@@ -43,7 +44,10 @@ export class STXShield {
   private readonly relayer: RelayerProvider;
   private readonly submitter: ProofSubmitter;
   private readonly log: Logger;
-  private readonly tree = new CommitmentTree();
+  // Commitment tree rebuilt from the chain (via the API) before every op, so
+  // membership proofs and new-roots match the live on-chain root.
+  private tree = new CommitmentTree();
+  private commitmentIndex = new Map<string, number>();
   private readonly store = new NoteStore();
 
   // Derived lazily from the wallet's shield secret.
@@ -126,23 +130,65 @@ export class STXShield {
     return this.api.getMyHistory();
   }
 
-  /** Discover the notes this wallet owns by trial-decrypting the API's feed. */
+  /** Discover the notes this wallet owns by trial-decrypting the API's feed.
+   *  Scans the FULL encrypted feed (not just notes registered under our wallet)
+   *  so incoming transfers — encrypted to us by a sender — are discovered too. */
   async getNotes(): Promise<ShieldNote[]> {
     const { owner, viewing } = await this.keys();
-    const records = this.api.authenticated ? await this.api.getMyNotes() : await this.api.getEncryptedNotes(500, 0);
+    const records = await this.api.getEncryptedNotes(1000, 0);
     const found = discoverNotes(records, viewing, owner);
     for (const n of found) this.store.add(n);
     return this.store.unspent();
   }
 
   // ---- operations ------------------------------------------------------
+  /** Rebuild the commitment tree from the chain (all commitments, leaf order).
+   *  Must run before any op so membership proofs and roots match the live root. */
+  private async syncTree(): Promise<void> {
+    const commits = await this.api.getCommitments();
+    const tree = new CommitmentTree();
+    const index = new Map<string, number>();
+    for (const c of commits) {
+      const norm = (c.commitment.startsWith("0x") ? c.commitment : "0x" + c.commitment).toLowerCase();
+      const idx = tree.insert(hexToBytes(norm));
+      index.set(norm, idx);
+    }
+    this.tree = tree;
+    this.commitmentIndex = index;
+  }
+
   private membership(note: ShieldNote): MembershipWitness {
-    if (note.secret.leafIndex == null) throw new InvalidNoteError("note has no known tree position");
-    const p = this.tree.proof(note.secret.leafIndex);
+    // The note's real leaf position comes from the on-chain tree, not the
+    // locally-remembered index (which need not match the chain).
+    const leafIndex = this.commitmentIndex.get(note.commitment.toLowerCase());
+    if (leafIndex == null) {
+      throw new InvalidNoteError("note commitment is not on chain yet (wait for confirmation)");
+    }
+    const p = this.tree.proof(leafIndex);
     return { indexBits: p.indexBits, siblings: p.siblings.map((s) => bytesToBig(s)), merkleRoot: bytesToBig(this.tree.root) };
   }
   private currentRootHex(): string {
     return "0x" + bytesToHex(this.tree.root);
+  }
+  /** Read the LIVE commitment-tree root from privacy-registry (Hiro read-only).
+   *  Shield must declare this exact value as current-root or the tx reverts
+   *  with ERR-STALE-ROOT (u252). */
+  private async fetchCurrentRoot(): Promise<string> {
+    const hiro = NETWORKS[this.cfg.network].hiroApiUrl;
+    const res = await fetch(
+      `${hiro}/v2/contracts/call-read/${this.cfg.deployer}/privacy-registry/get-current-root`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sender: this.cfg.deployer, arguments: [] }),
+      },
+    );
+    const j = (await res.json()) as { okay?: boolean; result?: string };
+    if (!j.result) throw new RootNotFoundError("could not read the live current root");
+    const cv = cvToJSON(hexToCV(j.result)) as { value?: { root?: { value?: string } } };
+    const root = cv.value?.root?.value;
+    if (!root) throw new RootNotFoundError("unexpected get-current-root response shape");
+    return root;
   }
   private newNote(amount: bigint, owner: OwnerKey): { note: ShieldNote; commitment: bigint; ownerCommitment: bigint } {
     const blinding = randomBlinding();
@@ -154,11 +200,17 @@ export class STXShield {
     };
     return { note, commitment, ownerCommitment };
   }
-  private async storeCiphertext(note: ShieldNote, leafIndex: number): Promise<string> {
-    const { viewing } = await this.keys();
+  private async storeCiphertext(
+    note: ShieldNote,
+    leafIndex: number,
+    viewingPubKey?: Uint8Array,
+  ): Promise<string> {
+    // Default: encrypt to self. For a transfer, encrypt to the RECIPIENT's
+    // viewing key so only they can discover and read the note.
+    const vpk = viewingPubKey ?? (await this.keys()).viewing.publicKey;
     const enc = encryptNote(
       { version: 1, amount: note.amount, blinding: note.secret.blinding, ownerSk: note.secret.ownerSk, nonce: randomBlinding(), commitment: hexToBytes((note.commitment)), treePosition: leafIndex },
-      viewing.publicKey,
+      vpk,
     );
     const ciphertext = "0x" + toHex(encodeEncryptedNote(enc));
     if (this.api.authenticated) await this.api.registerNote(note.commitment, ciphertext).catch(() => {});
@@ -173,11 +225,15 @@ export class STXShield {
     const engine = requireEngine(this.cfg.proofEngine);
     const { owner } = await this.keys();
     await this.connect();
+    await this.syncTree();
 
     const { note, commitment, ownerCommitment } = this.newNote(micro, owner);
     const proved = await engine.proveShield({ note: { amount: micro, ownerPkX: owner.pkX, ownerPkY: owner.pkY, blinding: note.secret.blinding }, commitment, ownerCommitment });
 
-    const currentRoot = this.currentRootHex();
+    // current-root must equal the LIVE on-chain root (ERR-STALE-ROOT/u252). Append
+    // the commitment to the chain-synced tree and publish the resulting REAL root
+    // as new-root, so later spends can prove membership against a known root.
+    const currentRoot = await this.fetchCurrentRoot();
     const leafIndex = this.tree.insert(hexToBytes((note.commitment)));
     const newRoot = this.currentRootHex();
     const ciphertext = await this.storeCiphertext(note, leafIndex);
@@ -195,19 +251,23 @@ export class STXShield {
     const to = decodeAddress(recipient);
     const out = this.recipientNote(micro, to);
     const engine = requireEngine(this.cfg.proofEngine);
+    await this.syncTree();
     const nf = nullifierOf(BigInt(input.commitment), input.secret.ownerSk);
     const proved = await engine.proveTransfer({
       nullifier: nf, newCommitment: BigInt(out.commitment), newOwnerCommitment: out.ownerCommitment,
       input: this.witnessNote(input), ownerSk: input.secret.ownerSk, output: this.witnessNote(out.note), membership: this.membership(input),
     });
     const currentRoot = this.currentRootHex();
-    this.tree.insert(hexToBytes((out.commitment)));
+    const outLeaf = this.tree.insert(hexToBytes((out.commitment)));
     const newRoot = this.currentRootHex();
     const txid = await this.relayer.submit("transfer", {
       nullifier: toHex32(nf), newCommitment: out.commitment, newOwnerCommitment: toHex32(out.ownerCommitment),
       newMetadata: toHex32(0n), currentRoot, newRoot,
     }, (await this.submitter.submit(proved)));
-    this.consume(input);
+    await this.consume(input);
+    // Publish the output encrypted to the RECIPIENT's viewing key so they (and
+    // only they) can discover and spend the received note.
+    await this.storeCiphertext(out.note, outLeaf, to.viewingPk);
     return { txid, status: "confirmed", timestamp: Date.now() };
   }
 
@@ -218,6 +278,7 @@ export class STXShield {
     const a1 = toMicro(amounts[0]!), a2 = toMicro(amounts[1]!);
     if (a1 + a2 !== note.amount) throw new InvalidNoteError("split amounts must sum to the note amount");
     const engine = requireEngine(this.cfg.proofEngine);
+    await this.syncTree();
     const o1 = this.newNote(a1, owner), o2 = this.newNote(a2, owner);
     const nf = nullifierOf(BigInt(note.commitment), note.secret.ownerSk);
     const proved = await engine.proveSplit({
@@ -232,9 +293,12 @@ export class STXShield {
       nullifier: toHex32(nf), commitment1: o1.note.commitment, ownerCommitment1: toHex32(o1.ownerCommitment), metadata1: toHex32(0n),
       commitment2: o2.note.commitment, ownerCommitment2: toHex32(o2.ownerCommitment), metadata2: toHex32(0n), currentRoot, newRoot,
     }, (await this.submitter.submit(proved)));
-    this.consume(note);
-    const n1: ShieldNote = { ...o1.note, root: newRoot, txid, secret: { ...o1.note.secret, leafIndex: l1 } };
-    const n2: ShieldNote = { ...o2.note, root: newRoot, txid, secret: { ...o2.note.secret, leafIndex: l2 } };
+    await this.consume(note);
+    // Register the new notes so they persist + are discoverable after reload.
+    const ct1 = await this.storeCiphertext(o1.note, l1);
+    const ct2 = await this.storeCiphertext(o2.note, l2);
+    const n1: ShieldNote = { ...o1.note, ciphertext: ct1, root: newRoot, txid, secret: { ...o1.note.secret, leafIndex: l1 } };
+    const n2: ShieldNote = { ...o2.note, ciphertext: ct2, root: newRoot, txid, secret: { ...o2.note.secret, leafIndex: l2 } };
     this.store.add(n1); this.store.add(n2);
     return { txid, status: "confirmed", timestamp: Date.now(), notes: [n1, n2] };
   }
@@ -246,6 +310,7 @@ export class STXShield {
     const { owner } = await this.keys();
     const out = this.newNote(i1.amount + i2.amount, owner);
     const engine = requireEngine(this.cfg.proofEngine);
+    await this.syncTree();
     const nf1 = nullifierOf(BigInt(i1.commitment), i1.secret.ownerSk), nf2 = nullifierOf(BigInt(i2.commitment), i2.secret.ownerSk);
     const proved = await engine.proveMerge({
       nullifier1: nf1, nullifier2: nf2, commitment: out.commitment, ownerCommitment: out.ownerCommitment,
@@ -258,8 +323,10 @@ export class STXShield {
     const txid = await this.relayer.submit("merge", {
       nullifier1: toHex32(nf1), nullifier2: toHex32(nf2), commitment: out.note.commitment, ownerCommitment: toHex32(out.ownerCommitment), metadata: toHex32(0n), currentRoot, newRoot,
     }, (await this.submitter.submit(proved)));
-    this.consume(i1); this.consume(i2);
-    const merged: ShieldNote = { ...out.note, root: newRoot, txid, secret: { ...out.note.secret, leafIndex: leaf } };
+    await this.consume(i1);
+    await this.consume(i2);
+    const ct = await this.storeCiphertext(out.note, leaf);
+    const merged: ShieldNote = { ...out.note, ciphertext: ct, root: newRoot, txid, secret: { ...out.note.secret, leafIndex: leaf } };
     this.store.add(merged);
     return { txid, status: "confirmed", timestamp: Date.now(), note: merged };
   }
@@ -270,6 +337,7 @@ export class STXShield {
     const to = recipient ?? (this.cfg.signer ? await this.cfg.signer.getAddress(this.cfg.network) : undefined);
     if (!to) throw new ConfigError("a recipient address (or signer) is required to withdraw");
     const engine = requireEngine(this.cfg.proofEngine);
+    await this.syncTree();
     const nf = nullifierOf(BigInt(note.commitment), note.secret.ownerSk);
     const root = this.currentRootHex();
     const proved = await engine.proveWithdraw({
@@ -277,7 +345,7 @@ export class STXShield {
       input: this.witnessNote(note), ownerSk: note.secret.ownerSk, membership: this.membership(note),
     });
     const txid = await this.relayer.submit("withdraw", { nullifier: toHex32(nf), amount: note.amount.toString(), recipient: to, root }, (await this.submitter.submit(proved)));
-    this.consume(note);
+    await this.consume(note);
     // ~0.3% protocol withdraw fee.
     const amountReceived = note.amount - (note.amount * 30n) / 10_000n;
     return { txid, status: "confirmed", timestamp: Date.now(), recipient: to, amountReceived };
@@ -300,9 +368,17 @@ export class STXShield {
     const note = "note" in n ? n.note : n;
     return { amount: note.amount, ownerPkX: note.secret.ownerPkX, ownerPkY: note.secret.ownerPkY, blinding: note.secret.blinding };
   }
-  private consume(note: ShieldNote): void {
+  /** Mark a note spent locally AND on the API, awaited so the spend persists
+   *  before the operation returns (otherwise a refetch resurrects the note). */
+  private async consume(note: ShieldNote): Promise<void> {
     this.store.markSpent(note.commitment);
-    if (this.api.authenticated) void this.api.markSpent(note.commitment);
+    if (this.api.authenticated) {
+      try {
+        await this.api.markSpent(note.commitment);
+      } catch (e) {
+        this.log.warn("failed to mark note spent on the API", { commitment: note.commitment, e });
+      }
+    }
   }
 
   private async submitShield(amount: bigint, commitment: string, ownerCommitment: string, currentRoot: string, newRoot: string, inc: Inclusion): Promise<string> {
@@ -310,9 +386,23 @@ export class STXShield {
     // The relayer network publishes the aggregation root; wait until it is on
     // chain before the (user-signed) shield references it.
     await this.waitForRoot(inc);
+    // Encode as Clarity values matching privacy-pool.shield's signature:
+    //   (uint, buff32 x5, uint, uint, (list 32 buff32), uint)
+    const buf = (h: string) => Cl.bufferFromHex(h.replace(/^0x/, ""));
     return this.cfg.signer.signAndBroadcast({
       contractAddress: this.cfg.deployer, contractName: "privacy-pool", functionName: "shield",
-      functionArgs: [amount, commitment, ownerCommitment, toHex32(0n), currentRoot, newRoot, inc.domainId, inc.aggregationId, inc.merklePath, inc.leafIndex],
+      functionArgs: [
+        Cl.uint(amount),
+        buf(commitment),
+        buf(ownerCommitment),
+        buf(toHex32(0n)),
+        buf(currentRoot),
+        buf(newRoot),
+        Cl.uint(inc.domainId),
+        Cl.uint(inc.aggregationId),
+        Cl.list(inc.merklePath.map((p) => buf(p))),
+        Cl.uint(inc.leafIndex),
+      ],
     }, this.cfg.network);
   }
   private async waitForRoot(inc: Inclusion, tries = 30): Promise<void> {

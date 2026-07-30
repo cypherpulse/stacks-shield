@@ -56,7 +56,7 @@ function WithdrawForm() {
         />
       </Card>
 
-      <Card className="glass gap-5 p-6">
+      <Card className="glass gap-5 p-6 lg:sticky lg:top-6 lg:self-start">
         <div className="space-y-2">
           <Label htmlFor="recipient">Recipient address</Label>
           <Input
@@ -86,8 +86,21 @@ function WithdrawForm() {
           </div>
         </div>
 
-        <OperationProgress step={op.step} progress={op.progress} label={op.stepLabel} />
+        <OperationProgress
+          step={op.step}
+          progress={op.progress}
+          label={op.stepLabel}
+          txid={op.data?.txid}
+          successTitle="Withdrawal complete"
+          successDetail={`${formatStx(net)} sent to ${recipient.trim() || address || "your wallet"}.`}
+          onDone={() => {
+            op.reset();
+            setSelected(null);
+            setRecipient("");
+          }}
+        />
 
+        {op.step === "done" ? null : (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button size="lg" disabled={!selected || op.isPending}>
@@ -115,6 +128,7 @@ function WithdrawForm() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        )}
       </Card>
     </div>
   );

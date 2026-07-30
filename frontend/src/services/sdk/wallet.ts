@@ -89,6 +89,10 @@ export function createWalletSigner(address: string): WalletSigner {
         functionName: call.functionName,
         functionArgs: call.functionArgs,
         network: NETWORK,
+        // Shield moves the caller's STX (deposit + protocol fee) into the pool.
+        // The contract computes the fee, so we allow the transfers rather than
+        // hand-declaring exact post-conditions.
+        postConditionMode: "allow",
       } as never;
       const res = (await request("stx_callContract", params)) as {
         txid?: string;

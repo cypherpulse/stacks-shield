@@ -10,7 +10,6 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/query-client";
-import { env } from "@/lib/env";
 import { AppShell } from "@/shared/layouts/AppShell";
 
 // ---- root ------------------------------------------------------------------
@@ -24,18 +23,8 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
   errorComponent: ErrorBoundary,
 });
 
-const DevtoolsLazy = lazyRouteComponent(
-  () => import("@tanstack/react-router-devtools"),
-  "TanStackRouterDevtools",
-);
-
 function RootComponent() {
-  return (
-    <>
-      <Outlet />
-      {env.isDev ? <DevtoolsLazy /> : null}
-    </>
-  );
+  return <Outlet />;
 }
 
 function NotFound() {

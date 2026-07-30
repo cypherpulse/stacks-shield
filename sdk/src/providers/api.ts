@@ -15,6 +15,8 @@ export interface EncryptedNoteRecord {
   txid: string;
   /** pending | confirmed | failed — on-chain confirmation state of the note. */
   status?: string;
+  /** True once the note has been spent (its nullifier is on chain). */
+  spent?: boolean;
 }
 
 export interface ApiProviderOptions {
@@ -78,6 +80,11 @@ export class ApiProvider {
   }
   async getEncryptedNotes(limit = 200, offset = 0): Promise<EncryptedNoteRecord[]> {
     const r = await this.request<{ results: EncryptedNoteRecord[] }>(`/notes/encrypted?limit=${limit}&offset=${offset}`);
+    return r.results ?? [];
+  }
+  /** All on-chain commitments in leaf-index order — for rebuilding the tree. */
+  async getCommitments(): Promise<{ commitment: string; leafIndex: number }[]> {
+    const r = await this.request<{ results: { commitment: string; leafIndex: number }[] }>(`/commitments`);
     return r.results ?? [];
   }
 

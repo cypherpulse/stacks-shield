@@ -1,3 +1,4 @@
+import { ArrowRight, Coins, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { ConnectGate } from "@/shared/components/ConnectGate";
@@ -9,6 +10,7 @@ import { Card } from "@/shared/components/ui/card";
 import { useMerge } from "@/features/merge/useMerge";
 import type { ShieldNote } from "@/shared/types/shield";
 import { formatStx, toStx } from "@/shared/utils/format";
+import { cn } from "@/lib/cn";
 
 export function MergePage() {
   return (
@@ -46,31 +48,91 @@ function MergeForm() {
         />
       </Card>
 
-      <Card className="glass gap-5 p-6">
-        <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Selected</span>
-            <span className="font-mono">{picked.length} / 2</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Merged amount</span>
-            <span className="font-mono">{formatStx(total)}</span>
+      <Card className="glass gap-5 p-6 lg:sticky lg:top-6 lg:self-start">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Selected</span>
+          <span className="font-mono">{picked.length} / 2</span>
+        </div>
+
+        {/* Merge visual: note 1 + note 2 -> one merged note */}
+        <div className="rounded-xl border border-border bg-muted/20 p-4">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <MergeSlot note={picked[0]?.note} index={1} />
+            <span className="flex items-center justify-center text-muted-foreground">
+              <Plus className="size-4" />
+            </span>
+            <MergeSlot note={picked[1]?.note} index={2} />
+            <span className="flex items-center justify-center text-primary">
+              <ArrowRight className="size-5 max-sm:rotate-90" />
+            </span>
+            <div
+              className={cn(
+                "flex-1 rounded-lg border p-3 text-center transition-colors",
+                valid ? "border-primary/50 bg-primary/10 shadow-glow" : "border-dashed border-border bg-muted/30",
+              )}
+            >
+              <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Merged note</p>
+              <p
+                className={cn(
+                  "font-display text-base font-semibold",
+                  valid ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                {valid ? formatStx(total) : "—"}
+              </p>
+            </div>
           </div>
         </div>
 
-        <OperationProgress step={op.step} progress={op.progress} label={op.stepLabel} />
+        <OperationProgress
+          step={op.step}
+          progress={op.progress}
+          label={op.stepLabel}
+          txid={op.data?.txid}
+          successTitle="Merge complete"
+          successDetail={`Combined into a single ${formatStx(total)} note.`}
+          onDone={() => {
+            op.reset();
+            setPicked([]);
+          }}
+        />
 
-        <Button
-          size="lg"
-          disabled={!valid || op.isPending}
-          onClick={() =>
-            valid &&
-            op.mutate({ notes: [picked[0].note, picked[1].note] as [ShieldNote, ShieldNote] })
-          }
-        >
-          {op.isPending ? "Merging…" : "Merge notes"}
-        </Button>
+        {op.step !== "done" && (
+          <Button
+            size="lg"
+            disabled={!valid || op.isPending}
+            onClick={() =>
+              valid &&
+              op.mutate({ notes: [picked[0].note, picked[1].note] as [ShieldNote, ShieldNote] })
+            }
+          >
+            {op.isPending ? "Merging…" : "Merge notes"}
+          </Button>
+        )}
       </Card>
+    </div>
+  );
+}
+
+function MergeSlot({ note, index }: { note?: ShieldNote; index: number }) {
+  return (
+    <div
+      className={cn(
+        "flex-1 rounded-lg border p-3 text-center transition-colors",
+        note ? "border-teal/40 bg-teal/10" : "border-dashed border-border bg-muted/30",
+      )}
+    >
+      <p className="flex items-center justify-center gap-1 text-[11px] tracking-wide text-muted-foreground uppercase">
+        <Coins className="size-3" /> Note {index}
+      </p>
+      <p
+        className={cn(
+          "font-display text-base font-semibold",
+          note ? "text-teal" : "text-muted-foreground",
+        )}
+      >
+        {note ? formatStx(note.amount) : "Select"}
+      </p>
     </div>
   );
 }

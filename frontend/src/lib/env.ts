@@ -5,9 +5,9 @@
 const str = (v: string | undefined, fallback: string) => (v && v.trim() ? v.trim() : fallback);
 
 export const env = {
-  apiUrl: str(import.meta.env.VITE_API_URL, "https://stx-shield-api.onrender.com"),
-  relayerUrl: str(import.meta.env.VITE_RELAYER_URL, "https://stx-shield-relayer.onrender.com"),
-  zkVerifyUrl: str(import.meta.env.VITE_ZKVERIFY_URL, ""),
+  apiUrl: str(import.meta.env.VITE_API_URL, "http://localhost:8888"),
+  relayerUrl: str(import.meta.env.VITE_RELAYER_URL, "http://localhost:8787"),
+  zkVerifyUrl: str(import.meta.env.VITE_ZKVERIFY_URL, "http://localhost:8787"),
   network: str(import.meta.env.VITE_NETWORK, "testnet") as "testnet" | "mainnet",
   isDev: import.meta.env.DEV,
 } as const;
