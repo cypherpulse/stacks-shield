@@ -26,6 +26,7 @@
     "verify:testnet": "tsx scripts/deployment/verify-deployment.ts testnet",
     "validate:testnet": "tsx scripts/deployment/testnet-validation.ts testnet",
     "relayer": "tsx services/relayer/index.ts",
+    "dev:app": "pnpm --parallel --filter ./frontend --filter ./services/relayer dev",
     "test:relayer": "vitest run services/relayer/tests",
     "test:privacy": "vitest run tests/privacy",
     "upgrade:circuits": "tsx scripts/upgrades/circuit-upgrade.ts testnet"

@@ -26,6 +26,34 @@ const logger = pino({
       : { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:HH:MM:ss" } },
 });
 
+// Long-lived upstream sockets (zkVerify Volta wss, Hiro RPC) occasionally reset.
+// Treat known transient network codes as non-fatal so a dropped connection never
+// crash-loops the relayer; anything else is a real fault -> exit and let the host
+// restart cleanly.
+const TRANSIENT_NET = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EPIPE",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EHOSTUNREACH",
+]);
+const isTransientNet = (e: unknown): boolean => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "string" && TRANSIENT_NET.has(code);
+};
+
+process.on("uncaughtException", (e) => {
+  if (isTransientNet(e)) return void logger.warn({ code: (e as { code?: string }).code }, "relayer: transient socket error ignored");
+  logger.error({ err: e instanceof Error ? e.stack : String(e) }, "relayer: uncaught exception");
+  process.exit(1);
+});
+process.on("unhandledRejection", (e) => {
+  if (isTransientNet(e)) return void logger.warn({ code: (e as { code?: string }).code }, "relayer: transient socket rejection ignored");
+  logger.error({ err: e instanceof Error ? e.stack : String(e) }, "relayer: unhandled rejection");
+});
+
 const main = async (): Promise<void> => {
   const cfg = loadConfig();
   const queue = cfg.redisUrl ? await createBullQueue(cfg.redisUrl) : new MemoryQueue(cfg.retries);

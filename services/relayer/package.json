@@ -6,7 +6,7 @@
   "description": "STX Shield relayer (Phase 10). A trustless liveness component: publishes zkVerify roots and submits user operations. Never verifies proofs, holds secrets, owns notes, or censors.",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "tsx watch index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env.relayer index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
