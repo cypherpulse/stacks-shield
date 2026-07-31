@@ -138,7 +138,10 @@ export class STXShield {
     const records = await this.api.getEncryptedNotes(1000, 0);
     const found = discoverNotes(records, viewing, owner);
     for (const n of found) this.store.add(n);
-    return this.store.unspent();
+    // Newest first: higher leaf index == appended later. Not-yet-indexed
+    // (pending) notes have no leaf index, so they sort to the very top.
+    const newest = (n: ShieldNote) => n.secret.leafIndex ?? Number.MAX_SAFE_INTEGER;
+    return this.store.unspent().sort((a, b) => newest(b) - newest(a));
   }
 
   // ---- operations ------------------------------------------------------
@@ -239,7 +242,9 @@ export class STXShield {
     const ciphertext = await this.storeCiphertext(note, leafIndex);
 
     const txid = await this.submitShield(micro, note.commitment, toHex32(ownerCommitment), currentRoot, newRoot, (await this.submitter.submit(proved)));
-    const stored: ShieldNote = { ...note, ciphertext, root: newRoot, txid, secret: { ...note.secret, leafIndex } };
+    // Optimistic note: pending until the indexer observes it on chain. The API
+    // flips it to confirmed once the commitment lands, and getNotes self-heals.
+    const stored: ShieldNote = { ...note, ciphertext, root: newRoot, txid, status: "pending", secret: { ...note.secret, leafIndex } };
     this.store.add(stored);
     return { txid, status: "confirmed", timestamp: Date.now(), note: stored };
   }
@@ -297,8 +302,8 @@ export class STXShield {
     // Register the new notes so they persist + are discoverable after reload.
     const ct1 = await this.storeCiphertext(o1.note, l1);
     const ct2 = await this.storeCiphertext(o2.note, l2);
-    const n1: ShieldNote = { ...o1.note, ciphertext: ct1, root: newRoot, txid, secret: { ...o1.note.secret, leafIndex: l1 } };
-    const n2: ShieldNote = { ...o2.note, ciphertext: ct2, root: newRoot, txid, secret: { ...o2.note.secret, leafIndex: l2 } };
+    const n1: ShieldNote = { ...o1.note, ciphertext: ct1, root: newRoot, txid, status: "pending", secret: { ...o1.note.secret, leafIndex: l1 } };
+    const n2: ShieldNote = { ...o2.note, ciphertext: ct2, root: newRoot, txid, status: "pending", secret: { ...o2.note.secret, leafIndex: l2 } };
     this.store.add(n1); this.store.add(n2);
     return { txid, status: "confirmed", timestamp: Date.now(), notes: [n1, n2] };
   }
@@ -326,7 +331,7 @@ export class STXShield {
     await this.consume(i1);
     await this.consume(i2);
     const ct = await this.storeCiphertext(out.note, leaf);
-    const merged: ShieldNote = { ...out.note, ciphertext: ct, root: newRoot, txid, secret: { ...out.note.secret, leafIndex: leaf } };
+    const merged: ShieldNote = { ...out.note, ciphertext: ct, root: newRoot, txid, status: "pending", secret: { ...out.note.secret, leafIndex: leaf } };
     this.store.add(merged);
     return { txid, status: "confirmed", timestamp: Date.now(), note: merged };
   }
@@ -372,12 +377,16 @@ export class STXShield {
    *  before the operation returns (otherwise a refetch resurrects the note). */
   private async consume(note: ShieldNote): Promise<void> {
     this.store.markSpent(note.commitment);
-    if (this.api.authenticated) {
-      try {
-        await this.api.markSpent(note.commitment);
-      } catch (e) {
-        this.log.warn("failed to mark note spent on the API", { commitment: note.commitment, e });
-      }
+    if (!this.api.authenticated) return;
+    try {
+      // A received note's row is owned by the SENDER's wallet, so a wallet-scoped
+      // mark-spent would miss it and the note would look spendable forever (and
+      // fail on chain as "already spent" on reuse). Claim the row under THIS
+      // wallet first, then mark it spent.
+      if (note.ciphertext) await this.api.registerNote(note.commitment, note.ciphertext);
+      await this.api.markSpent(note.commitment);
+    } catch (e) {
+      this.log.warn("failed to mark note spent on the API", { commitment: note.commitment, e });
     }
   }
 
