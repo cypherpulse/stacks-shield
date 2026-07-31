@@ -13,6 +13,13 @@ export function formatStx(amount: bigint | number | undefined | null, digits = 6
   return `${value.toLocaleString(undefined, { maximumFractionDigits: digits })} STX`;
 }
 
+/** Format a value that is ALREADY in STX (e.g. a computed net/fee, or a value
+ *  that already went through `toStx`). Unlike `formatStx`, it does NOT re-apply
+ *  the µSTX heuristic, so amounts ≥ 1,000,000 STX are not wrongly divided. */
+export function stxLabel(value: number, digits = 6): string {
+  return `${(value || 0).toLocaleString(undefined, { maximumFractionDigits: digits })} STX`;
+}
+
 export function formatNumber(value: number | undefined | null): string {
   return (value ?? 0).toLocaleString();
 }

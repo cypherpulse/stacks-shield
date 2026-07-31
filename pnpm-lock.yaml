@@ -334,7 +334,7 @@ importers:
     devDependencies:
       '@stacks/connect':
         specifier: ^8.0.0
-        version: 8.2.6(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)
+        version: 8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.19)(tsx@4.23.1)(typescript@5.9.3)
@@ -7982,7 +7982,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit-controllers@1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)':
+  '@reown/appkit-controllers@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
@@ -8053,12 +8053,12 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit-pay@1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)':
+  '@reown/appkit-pay@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-utils': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-utils': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
       lit: 3.3.0
       valtio: 2.1.5(@types/react@19.2.17)(react@19.2.8)
     transitivePeerDependencies:
@@ -8130,12 +8130,12 @@ snapshots:
       - valtio
       - zod
 
-  '@reown/appkit-scaffold-ui@1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)':
+  '@reown/appkit-scaffold-ui@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-utils': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-utils': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
       lit: 3.3.0
     transitivePeerDependencies:
@@ -8209,13 +8209,13 @@ snapshots:
       - zod
     optional: true
 
-  '@reown/appkit-siwx@1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)':
+  '@reown/appkit-siwx@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-scaffold-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
-      '@reown/appkit-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-utils': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-scaffold-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
+      '@reown/appkit-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-utils': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
       bip322-js: 2.0.0
       bs58: 6.0.0
       lit: 3.3.0
@@ -8286,10 +8286,10 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit-ui@1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)':
+  '@reown/appkit-ui@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
       lit: 3.3.0
       qrcode: 1.5.3
@@ -8357,9 +8357,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit-universal-connector@1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)':
+  '@reown/appkit-universal-connector@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
-      '@reown/appkit': 1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
       '@walletconnect/types': 2.21.5(ioredis@5.11.1)
       '@walletconnect/universal-provider': 2.21.5(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
@@ -8432,10 +8432,10 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit-utils@1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)':
+  '@reown/appkit-utils@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       '@reown/appkit-polyfills': 1.7.17
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
       '@wallet-standard/wallet': 1.1.0
@@ -8529,15 +8529,15 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@reown/appkit@1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)':
+  '@reown/appkit@1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
       '@reown/appkit-common': 1.7.17(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-controllers': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-pay': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-controllers': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-pay': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       '@reown/appkit-polyfills': 1.7.17
-      '@reown/appkit-scaffold-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
-      '@reown/appkit-ui': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-utils': 1.7.17(ioredis@5.11.1)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
+      '@reown/appkit-scaffold-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
+      '@reown/appkit-ui': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-utils': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
       '@walletconnect/universal-provider': 2.21.5(ioredis@5.11.1)(typescript@5.9.3)(zod@4.4.3)
       bs58: 6.0.0
@@ -8546,7 +8546,7 @@ snapshots:
       viem: 2.55.10(typescript@5.9.3)(zod@4.4.3)
     optionalDependencies:
       '@lit/react': 1.0.8(@types/react@19.2.17)
-      '@reown/appkit-siwx': 1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(valtio@2.1.5)(zod@4.4.3)
+      '@reown/appkit-siwx': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.17)(react@19.2.8))(zod@4.4.3)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -8836,10 +8836,10 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@stacks/connect@8.2.6(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)':
+  '@stacks/connect@8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)':
     dependencies:
-      '@reown/appkit': 1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)
-      '@reown/appkit-universal-connector': 1.7.17(ioredis@5.11.1)(lit@3.3.0)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
+      '@reown/appkit-universal-connector': 1.7.17(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@4.4.3)
       '@scure/base': 1.2.6
       '@stacks/common': 7.5.0
       '@stacks/connect-ui': 8.1.2

@@ -13,7 +13,10 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { useActivity } from "@/features/activity/useActivity";
-import { errorMessage, formatDate, formatStx, truncate } from "@/shared/utils/format";
+import { useNotes } from "@/features/notes/useNotes";
+import { errorMessage, formatDate, stxLabel, toStx, truncate } from "@/shared/utils/format";
+
+const bare = (c: string) => c.toLowerCase().replace(/^0x/, "");
 
 export function ActivityPage() {
   return (
@@ -28,8 +31,17 @@ export function ActivityPage() {
 
 function Timeline() {
   const { data, isLoading, error, refetch } = useActivity();
+  const { data: notes } = useNotes();
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
+
+  // The API never sees plaintext amounts (they are encrypted in the note), so
+  // fill them in locally by matching each entry's commitment to a known note.
+  const amountByCommitment = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const n of notes ?? []) if (n.commitment) m.set(bare(n.commitment), toStx(n.amount));
+    return m;
+  }, [notes]);
 
   const entries = useMemo(
     () =>
@@ -90,7 +102,12 @@ function Timeline() {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="font-mono text-sm">{e.amount ? formatStx(e.amount) : "—"}</span>
+                {(() => {
+                  const amt = e.commitment ? amountByCommitment.get(bare(e.commitment)) : undefined;
+                  return amt != null ? (
+                    <span className="font-mono text-sm">{stxLabel(amt)}</span>
+                  ) : null;
+                })()}
                 <Badge variant="outline" className="capitalize">
                   {e.status ?? "submitted"}
                 </Badge>

@@ -23,7 +23,7 @@ import { WITHDRAW_FEE_RATE } from "@/shared/constants/protocol";
 import { useWallet } from "@/features/wallet/useWallet";
 import { useWithdraw } from "@/features/withdraw/useWithdraw";
 import type { ShieldNote } from "@/shared/types/shield";
-import { formatStx, toStx } from "@/shared/utils/format";
+import { stxLabel, toStx } from "@/shared/utils/format";
 
 export function WithdrawPage() {
   return (
@@ -74,15 +74,15 @@ function WithdrawForm() {
         <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Gross amount</span>
-            <span className="font-mono">{formatStx(gross)}</span>
+            <span className="font-mono">{stxLabel(gross)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Protocol fee (~0.3%)</span>
-            <span className="font-mono">{formatStx(fee)}</span>
+            <span className="font-mono">{stxLabel(fee)}</span>
           </div>
           <div className="flex justify-between border-t border-border pt-2 font-medium">
             <span>You receive</span>
-            <span className="font-mono">{formatStx(net)}</span>
+            <span className="font-mono">{stxLabel(net)}</span>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ function WithdrawForm() {
           label={op.stepLabel}
           txid={op.data?.txid}
           successTitle="Withdrawal complete"
-          successDetail={`${formatStx(net)} sent to ${recipient.trim() || address || "your wallet"}.`}
+          successDetail={`${stxLabel(net)} sent to ${recipient.trim() || address || "your wallet"}.`}
           onDone={() => {
             op.reset();
             setSelected(null);
@@ -111,7 +111,7 @@ function WithdrawForm() {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm withdrawal</AlertDialogTitle>
               <AlertDialogDescription>
-                {formatStx(net)} will be sent to {recipient.trim() || address}. This spends the
+                {stxLabel(net)} will be sent to {recipient.trim() || address}. This spends the
                 selected note permanently.
               </AlertDialogDescription>
             </AlertDialogHeader>

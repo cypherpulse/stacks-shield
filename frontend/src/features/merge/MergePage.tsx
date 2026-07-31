@@ -9,7 +9,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useMerge } from "@/features/merge/useMerge";
 import type { ShieldNote } from "@/shared/types/shield";
-import { formatStx, toStx } from "@/shared/utils/format";
+import { formatStx, stxLabel, toStx } from "@/shared/utils/format";
 import { cn } from "@/lib/cn";
 
 export function MergePage() {
@@ -78,7 +78,7 @@ function MergeForm() {
                   valid ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                {valid ? formatStx(total) : "—"}
+                {valid ? stxLabel(total) : "—"}
               </p>
             </div>
           </div>
@@ -90,7 +90,7 @@ function MergeForm() {
           label={op.stepLabel}
           txid={op.data?.txid}
           successTitle="Merge complete"
-          successDetail={`Combined into a single ${formatStx(total)} note.`}
+          successDetail={`Combined into a single ${stxLabel(total)} note.`}
           onDone={() => {
             op.reset();
             setPicked([]);

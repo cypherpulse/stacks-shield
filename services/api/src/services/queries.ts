@@ -174,6 +174,13 @@ export const registerWalletNote = async (
   return { updated: false };
 };
 
-export const markWalletNoteSpent = async (wallet: string, commitment: string): Promise<void> => {
-  await db.update(notes).set({ spent: true }).where(and(eq(notes.wallet, wallet), eq(notes.commitment, commitment)));
+export const markWalletNoteSpent = async (wallet: string, commitment: string): Promise<boolean> => {
+  // Match the commitment however it was stored (with or without the 0x prefix).
+  const bare = commitment.startsWith("0x") ? commitment.slice(2) : commitment;
+  const res = await db
+    .update(notes)
+    .set({ spent: true })
+    .where(and(eq(notes.wallet, wallet), inArray(notes.commitment, [bare, "0x" + bare])))
+    .returning({ id: notes.id });
+  return res.length > 0;
 };

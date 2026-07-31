@@ -10,12 +10,15 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useSplit } from "@/features/split/useSplit";
 import type { ShieldNote } from "@/shared/types/shield";
-import { formatStx, toStx } from "@/shared/utils/format";
+import { stxLabel, toStx } from "@/shared/utils/format";
 
 export function SplitPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Split" description="Turn one note into two notes you own." />
+      <PageHeader
+        title="Split"
+        description="Turn one note into two notes you own. Need more? Split the results again."
+      />
       <ConnectGate>
         <SplitForm />
       </ConnectGate>
@@ -79,7 +82,7 @@ function SplitForm() {
           txid={op.data?.txid}
           successTitle="Split complete"
           successDetail={
-            selected ? `${formatStx(amountA)} + ${formatStx(amountB)} — two new notes.` : undefined
+            selected ? `${stxLabel(amountA)} + ${stxLabel(amountB)}, two new notes.` : undefined
           }
           onDone={() => {
             op.reset();

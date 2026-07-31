@@ -55,6 +55,7 @@ export interface HistoryEntry {
   id?: string;
   type: OperationType | string;
   amount?: bigint | number;
+  commitment?: string;
   status?: string;
   txid?: string;
   timestamp?: string | number;

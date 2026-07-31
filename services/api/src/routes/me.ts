@@ -46,10 +46,12 @@ export const registerMeRoutes = (app: FastifyInstance): void => {
   });
 
   app.post<{ Params: { commitment: string } }>("/me/notes/:commitment/spent", guard, async (req, reply) => {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(req.params.commitment)) {
+    // Accept the commitment with or without the 0x prefix, and tolerate values
+    // that are not zero-padded to 64 hex -- the store matches both forms.
+    if (!/^(0x)?[0-9a-fA-F]{1,64}$/.test(req.params.commitment)) {
       return reply.status(400).send({ error: "invalid_request", message: "bad commitment" });
     }
-    await q.markWalletNoteSpent(req.wallet!, req.params.commitment);
-    return reply.send({ ok: true });
+    const updated = await q.markWalletNoteSpent(req.wallet!, req.params.commitment);
+    return reply.send({ ok: true, updated });
   });
 };

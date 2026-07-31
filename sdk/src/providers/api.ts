@@ -116,6 +116,10 @@ export class ApiProvider {
     await this.request(`/me/notes`, { method: "POST", auth: true, body: JSON.stringify({ commitment, ciphertext }) });
   }
   async markSpent(commitment: string): Promise<void> {
-    await this.request(`/me/notes/${commitment}/spent`, { method: "POST", auth: true }).catch(() => {});
+    // Send the bare hex (no 0x) in the path; the API matches either form. Let
+    // errors propagate so the caller can log a failed mark instead of silently
+    // leaving a spent note looking spendable.
+    const bare = commitment.startsWith("0x") ? commitment.slice(2) : commitment;
+    await this.request(`/me/notes/${bare}/spent`, { method: "POST", auth: true });
   }
 }

@@ -1,4 +1,4 @@
-import { Check, Copy, QrCode } from "lucide-react";
+import { Check, Copy, Moon, QrCode, Sun } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -7,7 +7,6 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
 import { Switch } from "@/shared/components/ui/switch";
-import { API_URL, DEPLOYER, RELAYER_URL } from "@/shared/constants/protocol";
 import { getShield } from "@/services/sdk/shield.service";
 import { useWallet } from "@/features/wallet/useWallet";
 import { useThemeStore } from "@/store/theme";
@@ -55,8 +54,8 @@ export function Settings() {
           <div>
             <p className="text-sm font-medium">Your STX Shield address</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Share this to receive private transfers. It's a set of public keys — it reveals no
-              balance, history, or your wallet address.
+              Share this to receive private transfers. It's a set of public keys, so it reveals no
+              balance, no history, and not your wallet address.
             </p>
           </div>
         </div>
@@ -76,8 +75,22 @@ export function Settings() {
 
       <Card className="glass gap-4 p-6">
         <p className="text-sm font-medium">Appearance</p>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="theme">Dark mode</Label>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/12 text-primary">
+              {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+            </span>
+            <div>
+              <Label htmlFor="theme" className="text-sm font-medium">
+                {theme === "dark" ? "Dark" : "Light"} theme
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {theme === "dark"
+                  ? "Easier on the eyes in low light."
+                  : "Bright, high-contrast interface."}
+              </p>
+            </div>
+          </div>
           <Switch
             id="theme"
             checked={theme === "dark"}
@@ -104,12 +117,8 @@ export function Settings() {
       </Card>
 
       <Card className="glass gap-3 p-6">
-        <p className="text-sm font-medium">Protocol</p>
+        <p className="text-sm font-medium">Network</p>
         <Row label="Network" value="Stacks Testnet" />
-        <Row label="SDK" value="@stx-shield/sdk (workspace)" />
-        <Row label="API endpoint" value={API_URL} />
-        <Row label="Relayer endpoint" value={RELAYER_URL} />
-        <Row label="Contract deployer" value={DEPLOYER} />
       </Card>
     </div>
   );

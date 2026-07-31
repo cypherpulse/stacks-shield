@@ -271,9 +271,9 @@ export class STXShield {
     return { txid, status: "confirmed", timestamp: Date.now() };
   }
 
-  /** Split a note into several smaller notes owned by you. */
+  /** Split a note into two smaller notes owned by you. */
   async split(note: ShieldNote, amounts: (number | bigint)[]): Promise<SplitResponse> {
-    if (amounts.length !== 2) throw new InvalidNoteError("split produces exactly two notes; chain splits for more");
+    if (amounts.length !== 2) throw new InvalidNoteError("split produces exactly two notes; split the results again for more");
     const { owner } = await this.keys();
     const a1 = toMicro(amounts[0]!), a2 = toMicro(amounts[1]!);
     if (a1 + a2 !== note.amount) throw new InvalidNoteError("split amounts must sum to the note amount");
