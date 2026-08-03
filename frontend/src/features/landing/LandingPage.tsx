@@ -164,6 +164,9 @@ export function Landing() {
                 {l.label}
               </a>
             ))}
+            <Link to="/guide" className="transition-colors hover:text-foreground">
+              Guide
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <Button

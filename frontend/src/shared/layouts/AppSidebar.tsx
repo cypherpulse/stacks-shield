@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowDownToLine,
   ArrowLeftRight,
+  BookOpen,
   Compass,
   Droplets,
   LayoutDashboard,
@@ -29,6 +30,7 @@ import {
 
 const overview = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Guide", url: "/guide", icon: BookOpen },
   { title: "Faucet", url: "/faucet", icon: Droplets },
   { title: "Notes", url: "/notes", icon: Wallet },
   { title: "Activity", url: "/activity", icon: Activity },

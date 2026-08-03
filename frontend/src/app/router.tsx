@@ -184,6 +184,11 @@ const faucetRoute = createRoute({
   path: "/faucet",
   component: lazyRouteComponent(() => import("@/features/faucet/FaucetPage"), "FaucetPage"),
 });
+const guideRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/guide",
+  component: lazyRouteComponent(() => import("@/features/guide/GuidePage"), "GuidePage"),
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -199,6 +204,7 @@ const routeTree = rootRoute.addChildren([
     explorerRoute,
     settingsRoute,
     faucetRoute,
+    guideRoute,
   ]),
 ]);
 
