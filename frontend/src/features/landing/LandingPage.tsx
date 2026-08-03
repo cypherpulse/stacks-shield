@@ -12,8 +12,10 @@ import {
   Layers,
   Lock,
   Merge,
+  Moon,
   ShieldCheck,
   Split,
+  Sun,
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -29,6 +31,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { LINKS } from "@/shared/constants/protocol";
 import { useStats } from "@/features/dashboard/useStats";
+import { useThemeStore } from "@/store/theme";
 import { formatNumber } from "@/shared/utils/format";
 
 const navLinks = [
@@ -76,7 +79,7 @@ const steps = [
   {
     icon: KeyRound,
     title: "Connect",
-    body: "Connect a Stacks wallet on Testnet. Keys never leave your device.",
+    body: "Connect a Stacks wallet on public testnet. Your keys never leave your device.",
   },
   {
     icon: ShieldCheck,
@@ -96,11 +99,11 @@ const steps = [
 ];
 
 const privacyPoints = [
-  { icon: EyeOff, text: "Amounts hidden — decrypted only in your browser, never on a server." },
-  { icon: Lock, text: "Non-custodial — note keys derived from your wallet signature." },
+  { icon: EyeOff, text: "Amounts stay hidden. Notes are decrypted only in your browser, never on a server." },
+  { icon: Lock, text: "Non-custodial. Your note keys come from your own wallet signature." },
   {
     icon: ShieldCheck,
-    text: "Double-spend protection enforced on-chain by zero-knowledge proofs.",
+    text: "Every spend proves on-chain, with zero-knowledge, that the note is real and unspent.",
   },
 ];
 
@@ -111,19 +114,23 @@ const faqs = [
   },
   {
     q: "What does 'private' actually mean here?",
-    a: "Amounts and ownership of shielded notes are hidden. Deposits and withdrawals touch the public chain, but the link between them is broken.",
+    a: "The amount and owner of every shielded note are hidden. Deposits and withdrawals still touch the public chain, but nothing links a withdrawal back to the deposit it came from.",
   },
   {
     q: "Which wallets are supported?",
-    a: "Any Stacks wallet supported by Stacks Connect — Leather, Xverse and Asigna — on Stacks Testnet.",
+    a: "Any Stacks wallet that works with Stacks Connect, including Leather, Xverse, and Asigna.",
   },
   {
     q: "Are there fees?",
-    a: "A small protocol fee (~0.3%) is applied to withdrawals. Shielding only costs the standard Stacks network fee.",
+    a: "A small protocol fee of about 0.3% is taken on withdrawals. Shielding only costs the standard Stacks network fee.",
   },
   {
-    q: "Is this production ready?",
-    a: "STX Shield v1 is live on Stacks Testnet. Use testnet STX only for now.",
+    q: "Do I need to understand zero-knowledge proofs?",
+    a: "No. Everything needed to keep your notes private is generated for you, in your browser, every time you act on a note. There is nothing technical to set up or manage.",
+  },
+  {
+    q: "Is it safe to use real STX?",
+    a: "Not yet. STX Shield runs on public Stacks Testnet. Use testnet STX only. A mainnet release comes later.",
   },
 ];
 
@@ -135,12 +142,14 @@ const accentText: Record<string, string> = {
 
 export function Landing() {
   const { data: stats, isLoading } = useStats();
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
 
   const metrics = [
-    { label: "Total shielded", value: isLoading ? "—" : `${formatNumber(stats?.shielded)} STX` },
-    { label: "Private notes", value: isLoading ? "—" : formatNumber(stats?.notes) },
-    { label: "Operations", value: isLoading ? "—" : formatNumber(stats?.operations) },
-    { label: "Fees collected", value: isLoading ? "—" : `${formatNumber(stats?.fees)} STX` },
+    { label: "Total shielded", value: isLoading ? "…" : `${formatNumber(stats?.shielded)} STX` },
+    { label: "Private notes", value: isLoading ? "…" : formatNumber(stats?.notes) },
+    { label: "Operations", value: isLoading ? "…" : formatNumber(stats?.operations) },
+    { label: "Fees collected", value: isLoading ? "…" : `${formatNumber(stats?.fees)} STX` },
   ];
 
   return (
@@ -157,6 +166,14 @@ export function Landing() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+            </Button>
             <Button asChild variant="ghost" size="sm" className="max-sm:hidden">
               <a href={LINKS.github} target="_blank" rel="noreferrer" aria-label="GitHub">
                 <Github className="size-4" />
@@ -184,17 +201,17 @@ export function Landing() {
               className="glass inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <span className="size-1.5 rounded-full bg-success" />
-              Live on Stacks Testnet
+              Now live on public Stacks Testnet
               <ArrowRight className="size-3" />
             </a>
 
             <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-tight sm:text-6xl">
-              Private STX for <span className="text-gradient">Bitcoin&apos;s</span> smart-contract
-              layer
+              Send STX <span className="text-gradient">privately</span> on Stacks
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              Shield, transfer, split, merge and withdraw STX privately — secured by zero-knowledge
-              proofs. No cryptography to learn. It just feels like a wallet.
+              Deposit STX and get a private note only you can see. Send, split, merge, and withdraw
+              it with the amount and the owner hidden on-chain. Zero-knowledge proofs keep every
+              move private and verifiable. You use it like a wallet.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -290,9 +307,9 @@ export function Landing() {
       {/* Features (bento) */}
       <Section id="features">
         <SectionTitle
-          eyebrow="Primitives"
-          title="Five operations, one clean interface"
-          body="Everything you need for private STX — without touching Noir, zkVerify or Merkle trees."
+          eyebrow="What you can do"
+          title="Five ways to move private STX"
+          body="Each one runs in your browser and settles on-chain. The cryptography is handled for you."
         />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {primitives.map((f, i) => (
@@ -316,9 +333,10 @@ export function Landing() {
             <div className="gradient-brand flex h-full flex-col justify-between rounded-2xl p-6 text-primary-foreground shadow-glow">
               <Zap className="size-6" />
               <div className="mt-6">
-                <p className="font-display text-lg font-semibold">Instant, wallet-grade UX</p>
+                <p className="font-display text-lg font-semibold">Everything runs on your device</p>
                 <p className="mt-1.5 text-sm text-primary-foreground/80">
-                  Proofs run locally in the browser. No accounts, no cryptography to learn.
+                  Zero-knowledge proofs are generated locally in your browser, so your note secrets
+                  never leave it. No account to create.
                 </p>
               </div>
             </div>
@@ -379,7 +397,8 @@ export function Landing() {
                 <CodeRow label="proof" value="valid ✓" tone="primary" />
               </div>
               <p className="mt-5 text-xs text-muted-foreground">
-                Observers see a valid zero-knowledge proof landed — never who sent what to whom.
+                Observers only see that a valid zero-knowledge proof landed. They never see who sent
+                what, to whom, or how much.
               </p>
             </div>
           </Reveal>
@@ -390,10 +409,11 @@ export function Landing() {
       <Section>
         <div className="gradient-brand relative overflow-hidden rounded-3xl px-6 py-14 text-center text-primary-foreground shadow-glow sm:px-12">
           <h2 className="mx-auto max-w-2xl font-display text-2xl font-semibold tracking-tight sm:text-4xl">
-            Start shielding STX in minutes
+            Make your first private transaction
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80 sm:text-base">
-            Connect a Stacks wallet on Testnet and make your first private transaction.
+            Connect a Stacks wallet, request some testnet STX, and shield it. The whole flow takes a
+            couple of minutes.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" variant="secondary">
@@ -435,7 +455,7 @@ export function Landing() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Logo />
           <p className="text-xs text-muted-foreground">
-            STX Shield v1 · Stacks Testnet · Use testnet STX only
+            STX Shield · Public Stacks Testnet · Use testnet STX only
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a href={LINKS.docs} target="_blank" rel="noreferrer" className="hover:text-foreground">

@@ -54,6 +54,9 @@ export class STXShield {
   private owner?: OwnerKey;
   private viewing?: ViewingKeyPair;
   private walletAddress?: string;
+  // In-flight guards so concurrent callers share ONE wallet signature prompt.
+  private connecting?: Promise<string>;
+  private keysP?: Promise<{ owner: OwnerKey; viewing: ViewingKeyPair }>;
 
   constructor(config: SDKConfig) {
     const net = NETWORKS[config.network];
@@ -85,21 +88,34 @@ export class STXShield {
   // ---- identity / auth -------------------------------------------------
   private async keys(): Promise<{ owner: OwnerKey; viewing: ViewingKeyPair }> {
     if (this.owner && this.viewing) return { owner: this.owner, viewing: this.viewing };
+    if (this.keysP) return this.keysP;
     if (!this.cfg.signer) throw new ConfigError("a `signer` is required for note operations");
     const engine = requireEngine(this.cfg.proofEngine);
-    const secret = await this.cfg.signer.getShieldSecret();
-    this.owner = await engine.deriveOwnerKey(secret);
-    this.viewing = viewingKeyFromSecret(secret);
-    return { owner: this.owner, viewing: this.viewing };
+    const signer = this.cfg.signer;
+    // Coalesce concurrent callers so getShieldSecret() prompts to sign only once.
+    this.keysP = (async () => {
+      const secret = await signer.getShieldSecret();
+      this.owner = await engine.deriveOwnerKey(secret);
+      this.viewing = viewingKeyFromSecret(secret);
+      return { owner: this.owner, viewing: this.viewing };
+    })().finally(() => { this.keysP = undefined; });
+    return this.keysP;
   }
 
-  /** Authenticate with the API using a wallet signature. Idempotent. */
+  /** Authenticate with the API using a wallet signature. Idempotent, and safe
+   *  under concurrency: parallel callers share ONE in-flight auth so the wallet
+   *  prompts to sign only once (not once per query firing on page load). */
   async connect(): Promise<string> {
     if (this.api.authenticated && this.walletAddress) return this.walletAddress;
+    if (this.connecting) return this.connecting;
+    this.connecting = this.doConnect().finally(() => { this.connecting = undefined; });
+    return this.connecting;
+  }
+
+  private async doConnect(): Promise<string> {
     if (!this.cfg.signer) throw new ConfigError("a `signer` is required to connect");
     const wallet = await this.cfg.signer.getAddress(this.cfg.network);
-    const { nonce, message } = await this.api.authNonce(wallet);
-    void nonce;
+    const { message } = await this.api.authNonce(wallet);
     const { signature, publicKey } = await this.cfg.signer.signMessage(message);
     const { token } = await this.api.authVerify(wallet, publicKey, signature, message);
     this.api.setToken(token);

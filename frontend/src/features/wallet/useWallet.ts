@@ -23,7 +23,7 @@ export function useWallet() {
     restoreWallet()
       .then((session) => {
         if (!session) return;
-        ShieldService.setSigner(createWalletSigner(session.address));
+        ShieldService.setSigner(createWalletSigner(session.address), session.address);
         setSession(session);
       })
       .catch(() => undefined);
@@ -33,7 +33,7 @@ export function useWallet() {
     try {
       setStatus("connecting");
       const session = await connectWallet();
-      ShieldService.setSigner(createWalletSigner(session.address));
+      ShieldService.setSigner(createWalletSigner(session.address), session.address);
       setSession(session);
       toast.success("Wallet connected", { description: session.address });
       return session;

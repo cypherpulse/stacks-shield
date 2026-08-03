@@ -22,11 +22,18 @@ function threadCount(): number {
 export class ShieldService {
   private static instance: STXShieldClient | null = null;
   private static signer: WalletSigner | null = null;
+  private static address: string | null = null;
 
-  static setSigner(signer: WalletSigner | null) {
-    // Changing identity invalidates the in-memory note/tree state.
-    if (ShieldService.signer !== signer) ShieldService.instance = null;
+  /**
+   * Set the active signer. The instance is rebuilt ONLY when the wallet ADDRESS
+   * changes — `createWalletSigner` returns a new object each call, so comparing
+   * by object identity would needlessly churn the client (and re-trigger auth
+   * on every render, causing duplicate sign prompts).
+   */
+  static setSigner(signer: WalletSigner | null, address: string | null = null) {
+    if (ShieldService.address !== address) ShieldService.instance = null;
     ShieldService.signer = signer;
+    ShieldService.address = address;
   }
 
   /** The one SDK instance for the life of the session. */
@@ -49,6 +56,7 @@ export class ShieldService {
   static reset() {
     ShieldService.instance = null;
     ShieldService.signer = null;
+    ShieldService.address = null;
   }
 }
 

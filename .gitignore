@@ -12,6 +12,12 @@
 !**/.env*.example
 # Local Clarinet network configs carry deployer mnemonics.
 **/settings/Mainnet.toml
+# CLI test harness note store — holds spend secrets.
+cli-notes.json
+**/cli-notes.json
+# Generated account keys/mnemonics — never commit.
+accounts.json
+**/accounts.json
 **/settings/Testnet.toml
 # Any stray key / mnemonic dumps.
 *.key
