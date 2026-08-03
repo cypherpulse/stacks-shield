@@ -8,6 +8,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { queryClient } from "@/lib/query-client";
 import { AppShell } from "@/shared/layouts/AppShell";
@@ -24,6 +25,11 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
+  // Reaching here means the current build loaded fine -- clear the guard so a
+  // stale-chunk error from a LATER redeploy can still auto-recover once.
+  useEffect(() => {
+    window.sessionStorage.removeItem(RELOAD_GUARD_KEY);
+  }, []);
   return <Outlet />;
 }
 
@@ -47,24 +53,55 @@ function NotFound() {
   );
 }
 
+// A stale JS chunk (the browser has an old build's file list, e.g. after a
+// redeploy, or a dev-server restart mid-session) fails as a raw, developer-y
+// browser error. `router.invalidate()` cannot fix this -- the fix is a real
+// page reload to fetch the current file list. Detect it and word it plainly.
+const isStaleChunkError = (error: Error): boolean =>
+  /failed to fetch dynamically imported module|importing a module script failed|error loading dynamically imported module|failed to load module script/i.test(
+    error?.message ?? "",
+  );
+
+const RELOAD_GUARD_KEY = "stx-shield.auto-reloaded";
+
 function ErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const staleChunk = isStaleChunkError(error);
+
+  // Auto-recover once: a stale chunk almost always means "the app updated
+  // since this tab was opened". Reload automatically, but only once per
+  // session -- if it fails again after a fresh load, something else is wrong
+  // and we fall through to the manual message instead of reload-looping.
+  useEffect(() => {
+    if (!staleChunk) return;
+    if (window.sessionStorage.getItem(RELOAD_GUARD_KEY)) return;
+    window.sessionStorage.setItem(RELOAD_GUARD_KEY, "1");
+    window.location.reload();
+  }, [staleChunk]);
+
+  const title = staleChunk ? "A newer version is ready" : "This page didn't load";
+  const message = staleChunk
+    ? "STX Shield was updated since you opened this tab. Reloading gets you the latest version."
+    : (error?.message || "Something went wrong while loading this page.");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="font-display text-xl font-semibold tracking-tight">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {error?.message ?? "Something went wrong."} You can try again or head home.
-        </p>
+        <h1 className="font-display text-xl font-semibold tracking-tight">{title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
+              if (staleChunk) {
+                window.location.reload();
+                return;
+              }
               router.invalidate();
               reset();
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            {staleChunk ? "Reload" : "Try again"}
           </button>
           <Link
             to="/"
@@ -142,6 +179,11 @@ const settingsRoute = createRoute({
   path: "/settings",
   component: lazyRouteComponent(() => import("@/features/settings/SettingsPage"), "Settings"),
 });
+const faucetRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/faucet",
+  component: lazyRouteComponent(() => import("@/features/faucet/FaucetPage"), "FaucetPage"),
+});
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -156,6 +198,7 @@ const routeTree = rootRoute.addChildren([
     activityRoute,
     explorerRoute,
     settingsRoute,
+    faucetRoute,
   ]),
 ]);
 

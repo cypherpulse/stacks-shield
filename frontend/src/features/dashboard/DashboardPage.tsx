@@ -10,7 +10,7 @@ import { Card } from "@/shared/components/ui/card";
 import { useActivity } from "@/features/activity/useActivity";
 import { useNotes } from "@/features/notes/useNotes";
 import { useStats } from "@/features/dashboard/useStats";
-import { formatNumber, formatStx, relativeTime, stxLabel, toStx } from "@/shared/utils/format";
+import { formatNumber, relativeTime, stxLabel, toStx } from "@/shared/utils/format";
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
 
@@ -21,9 +21,14 @@ export function Dashboard() {
         title="Dashboard"
         description="Your private balance at a glance."
         actions={
-          <Button asChild>
-            <Link to="/shield">Shield STX</Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link to="/faucet">Get testnet STX</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/shield">Shield STX</Link>
+            </Button>
+          </>
         }
       />
       <ConnectGate>

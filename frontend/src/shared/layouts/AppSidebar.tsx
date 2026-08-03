@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   ArrowLeftRight,
   Compass,
+  Droplets,
   LayoutDashboard,
   Merge,
   Settings,
@@ -28,6 +29,7 @@ import {
 
 const overview = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Faucet", url: "/faucet", icon: Droplets },
   { title: "Notes", url: "/notes", icon: Wallet },
   { title: "Activity", url: "/activity", icon: Activity },
 ];

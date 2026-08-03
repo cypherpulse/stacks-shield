@@ -14,6 +14,13 @@ export const DEPLOYER = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
 export const MIN_SHIELD_STX = 1;
 export const WITHDRAW_FEE_RATE = 0.003; // ~0.3% protocol withdraw fee
 
+// Testnet faucet (Hermes). The key ships in the client bundle, so it gates
+// casual use, not abuse — front a server proxy if the faucet must be protected.
+export const FAUCET_URL =
+  import.meta.env.VITE_FAUCET_URL ?? "https://hermes-faucet-backend.onrender.com/api/claim-stx";
+export const FAUCET_API_KEY = import.meta.env.VITE_FAUCET_API_KEY ?? "hermes_faucet_secret_2026";
+export const FAUCET_AMOUNT_STX = 210;
+
 export const EXPLORER_TX = (txid: string) => `https://explorer.hiro.so/txid/${txid}?chain=testnet`;
 
 export const LINKS = {
