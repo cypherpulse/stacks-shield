@@ -1,5 +1,3 @@
-[build]
-	publish = "dist"
 
 [[redirects]]
 	from = "/*"
