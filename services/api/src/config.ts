@@ -72,6 +72,12 @@ export const config = {
     zkVerifier: contract("zk-verifier"),
     privacyRegistry: contract("privacy-registry"),
     protocolFees: contract("protocol-fees"),
+    // SIP-10 multi-asset extension (shares privacy-registry / note-manager with
+    // the native pool; see indexers + /assets). Deployed under the same account.
+    sip10Pool: contract("sip10-pool"),
+    sip10ZkVerifier: contract("sip10-zk-verifier"),
+    assetRegistry: contract("asset-registry"),
+    sip10ProtocolFees: contract("sip10-protocol-fees"),
   },
 
   blockPollMs: e.BLOCK_POLL_MS,

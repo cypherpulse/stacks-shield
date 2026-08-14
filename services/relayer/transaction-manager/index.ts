@@ -21,7 +21,7 @@ import {
   makeContractCall,
   type ClarityValue,
 } from "@stacks/transactions";
-import { RelayError, type Operation, type RelayRequest } from "../types/index.js";
+import { RelayError, isSip10, type Operation, type RelayRequest } from "../types/index.js";
 
 /** A signed Stacks transaction, as returned by makeContractCall. */
 type SignedTx = Awaited<ReturnType<typeof makeContractCall>>;
@@ -42,6 +42,13 @@ export interface TxManagerConfig {
 const buf = (hex: string) =>
   Cl.buffer(Uint8Array.from(Buffer.from(hex.replace(/^0x/, ""), "hex")));
 
+/** "ADDR.name" -> contract-principal Clarity value for the <sip-010-trait> arg. */
+const tokenArg = (principal: string): ClarityValue => {
+  const [addr, name] = principal.split(".");
+  if (!addr || !name) throw new RelayError("invalid_token", `token must be a contract principal: ${principal}`, 400);
+  return Cl.contractPrincipal(addr, name);
+};
+
 /** The four inclusion arguments every operation ends with. */
 const inclusionArgs = (r: RelayRequest): ClarityValue[] => [
   Cl.uint(r.inclusion.domainId),
@@ -50,20 +57,30 @@ const inclusionArgs = (r: RelayRequest): ClarityValue[] => [
   Cl.uint(r.inclusion.leafIndex),
 ];
 
-/** Maps a relay request onto its contract call. The ONLY place request
- *  fields become transaction arguments — so the mapping is auditable in one
- *  spot, and any drift from the contract signatures shows up here. */
+/** Maps a relay request onto its contract call. The ONLY place request fields
+ *  become transaction arguments — so the mapping is auditable in one spot, and
+ *  any drift from the contract signatures shows up here.
+ *
+ *  Native STX and SIP-10 share the SAME proof-bound parameters and inclusion
+ *  args; SIP-10 differs only in WHERE it lands and that a token trait arg leads:
+ *    - native : privacy-pool.{transfer,withdraw}, split-merge-manager.{split-note,merge-notes}
+ *    - SIP-10 : sip10-pool.{transfer,withdraw,split,merge-notes}, with the token
+ *               contract-principal prepended (asset_id is bound in the proof).
+ */
 export const buildCall = (
   op: Operation,
   r: RelayRequest,
 ): { contract: string; fn: string; args: ClarityValue[] } => {
+  const sip10 = isSip10(r);
+  const lead: ClarityValue[] = sip10 ? [tokenArg(r.token!)] : [];
   switch (op) {
     case "transfer": {
       const t = r as import("../types/index.js").TransferRequest;
       return {
-        contract: "privacy-pool",
+        contract: sip10 ? "sip10-pool" : "privacy-pool",
         fn: "transfer",
         args: [
+          ...lead,
           buf(t.nullifier),
           buf(t.newCommitment),
           buf(t.newOwnerCommitment),
@@ -77,9 +94,10 @@ export const buildCall = (
     case "withdraw": {
       const w = r as import("../types/index.js").WithdrawRequest;
       return {
-        contract: "privacy-pool",
+        contract: sip10 ? "sip10-pool" : "privacy-pool",
         fn: "withdraw",
         args: [
+          ...lead,
           buf(w.nullifier),
           Cl.uint(BigInt(w.amount)),
           Cl.principal(w.recipient),
@@ -91,9 +109,10 @@ export const buildCall = (
     case "split": {
       const s = r as import("../types/index.js").SplitRequest;
       return {
-        contract: "split-merge-manager",
-        fn: "split-note",
+        contract: sip10 ? "sip10-pool" : "split-merge-manager",
+        fn: sip10 ? "split" : "split-note",
         args: [
+          ...lead,
           buf(s.nullifier),
           buf(s.commitment1),
           buf(s.ownerCommitment1),
@@ -110,9 +129,10 @@ export const buildCall = (
     case "merge": {
       const m = r as import("../types/index.js").MergeRequest;
       return {
-        contract: "split-merge-manager",
+        contract: sip10 ? "sip10-pool" : "split-merge-manager",
         fn: "merge-notes",
         args: [
+          ...lead,
           buf(m.nullifier1),
           buf(m.nullifier2),
           buf(m.commitment),

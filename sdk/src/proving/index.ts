@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- proof engine resolution
+// @stacks-shield/sdk -- proof engine resolution
 // =============================================================================
 
 import { ProofGenerationError } from "../errors/index.js";
@@ -17,7 +17,7 @@ export const requireEngine = (engine: ProofEngine | undefined): ProofEngine => {
   if (!engine) {
     throw new ProofGenerationError(
       "No proof engine configured. Provide `proofEngine` in the SDK config. " +
-        "Node/server: `@stx-shield/sdk/node` (Noir+Barretenberg toolchain, proven on testnet). " +
+        "Node/server: `@stacks-shield/sdk/node` (Noir+Barretenberg toolchain, proven on testnet). " +
         "Browser: a WASM engine (experimental). Read/stats/auth/discovery work without one.",
     );
   }

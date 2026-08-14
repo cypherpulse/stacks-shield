@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- note encryption (re-export of the proven scheme)
+// @stacks-shield/sdk -- note encryption (re-export of the proven scheme)
 // =============================================================================
 // X25519 ECDH + XChaCha20-Poly1305, with viewing keys separate from spending
 // keys. A note's contents (amount, blinding, owner secret) are encrypted to the

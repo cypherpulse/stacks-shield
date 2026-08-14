@@ -11,7 +11,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useTransfer } from "@/features/transfer/useTransfer";
 import type { ShieldNote } from "@/shared/types/shield";
-import { stxLabel, toStx } from "@/shared/utils/format";
+import { noteAsset, noteDisplay, noteLabel } from "@/shared/utils/format";
 
 export function TransferPage() {
   return (
@@ -32,7 +32,8 @@ function TransferForm() {
   const [recipient, setRecipient] = useState("");
   const op = useTransfer();
 
-  const amount = selected ? toStx(selected.note.amount) : 0;
+  const amount = selected ? noteDisplay(selected.note) : 0;
+  const sendLabel = selected ? noteLabel(selected.note) : "—";
   const valid = Boolean(selected) && recipient.trim().length > 10;
 
   return (
@@ -54,7 +55,7 @@ function TransferForm() {
           <div className="space-y-1 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">You need the recipient's shield address.</p>
             <p>
-              To receive, they must open STX Shield once, connect their wallet, and sign, which
+              To receive, they must open Stacks Shield once, connect their wallet, and sign, which
               derives their shield address (Settings → <span className="text-foreground">Show my
               shield address</span>). A brand-new wallet that has never used the protocol{" "}
               <span className="text-foreground">cannot</span> receive yet.
@@ -66,20 +67,20 @@ function TransferForm() {
           <Label htmlFor="recipient">Recipient shield address</Label>
           <Input
             id="recipient"
-            placeholder="Recipient's STX Shield address (not their ST… wallet address)"
+            placeholder="Recipient's Stacks Shield address (not their ST… wallet address)"
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
             className="font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
             This is <span className="text-foreground">not</span> a wallet (<code>ST…</code>) address.
-            The recipient shares it from <span className="text-foreground">Settings → your STX Shield address</span>.
+            The recipient shares it from <span className="text-foreground">Settings → your Stacks Shield address</span>.
           </p>
         </div>
 
         <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 text-sm">
           <span className="text-muted-foreground">You send</span>
-          <span className="font-mono text-lg">{selected ? stxLabel(amount) : "—"}</span>
+          <span className="font-mono text-lg">{sendLabel}</span>
         </div>
 
         <OperationProgress
@@ -88,7 +89,7 @@ function TransferForm() {
           label={op.stepLabel}
           txid={op.data?.txid}
           successTitle="Transfer sent"
-          successDetail={selected ? `${stxLabel(amount)} sent privately.` : undefined}
+          successDetail={selected ? `${sendLabel} sent privately.` : undefined}
           onDone={() => {
             op.reset();
             setSelected(null);
@@ -100,7 +101,14 @@ function TransferForm() {
           <Button
             size="lg"
             disabled={!valid || op.isPending}
-            onClick={() => selected && op.mutate({ amount, recipient: recipient.trim() })}
+            onClick={() =>
+              selected &&
+              op.mutate({
+                amount,
+                recipient: recipient.trim(),
+                asset: selected.note.asset?.native ? undefined : (selected.note.asset?.token ?? undefined),
+              })
+            }
           >
             {op.isPending ? "Sending…" : "Send privately"}
           </Button>

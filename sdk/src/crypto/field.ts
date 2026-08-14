@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- canonical field encoding
+// @stacks-shield/sdk -- canonical field encoding
 // =============================================================================
 // Re-exports the ONE canonical public-input encoding proven byte-identical
 // across circuits, contracts, SDK and zkVerify. Never re-implement these.

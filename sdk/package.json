@@ -1,5 +1,5 @@
 {
-  "name": "@stx-shield/sdk",
+  "name": "@stacks-shield/sdk",
   "version": "1.0.0",
   "description": "Privacy for STX in minutes. Shield, transfer, split, merge and withdraw STX with zero-knowledge proofs — without touching Noir, zkVerify, Merkle trees, nullifiers or relayers.",
   "license": "MIT",

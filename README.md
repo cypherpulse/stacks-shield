@@ -22,7 +22,7 @@ proofs (Noir + UltraHonk), verified through [zkVerify](https://zkverify.io).
 ```
         Frontend
            │
-     @stx-shield/sdk ──► Noir + Barretenberg (UltraHonk proof)
+     @stacks-shield/sdk ──► Noir + Barretenberg (UltraHonk proof)
            │                        │
            │                    zkVerify  (verifies + aggregates the proof)
            │                        │
@@ -128,7 +128,7 @@ zk/
   circuits/         Noir: shield / transfer / withdraw / split / merge + keygen + shared lib
   barretenberg/     UltraHonk proving / verification / vkeys
   proofs/           generators / serializers / verifiers
-sdk/                @stx-shield/sdk — TypeScript client (bb.js proving, Node + browser)
+sdk/                @stacks-shield/sdk — TypeScript client (bb.js proving, Node + browser)
 services/
   api/              public read-only API + indexers (Fastify + PostgreSQL/Drizzle + JWT)
   relayer/          relayer service (Fastify + BullMQ/Redis) — publishes roots, submits ops
@@ -156,7 +156,7 @@ invariants, and privacy tests.
 Using the SDK:
 
 ```ts
-import { STXShield } from "@stx-shield/sdk";
+import { STXShield } from "@stacks-shield/sdk";
 
 const shield = new STXShield({ network: "testnet", signer });
 await shield.shield(100);                  // 100 STX -> private note

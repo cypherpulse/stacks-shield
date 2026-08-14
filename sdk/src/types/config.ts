@@ -1,10 +1,11 @@
 // =============================================================================
-// @stx-shield/sdk -- configuration types
+// @stacks-shield/sdk -- configuration types
 // =============================================================================
 
 import type { ProofEngine } from "../proving/engine.js";
 import type { WalletSigner } from "./wallet.js";
 import type { Logger } from "../utils/logger.js";
+import type { NoteVault } from "../vault.js";
 
 export type Network = "testnet" | "mainnet";
 
@@ -50,6 +51,16 @@ export interface SDKConfig {
    * zkVerify account — development / server-side). Omit to disable proving.
    */
   zkVerify?: { endpointUrl?: string; seed?: string; domainId?: number };
+
+  /**
+   * Optional LOCAL note persistence. Strongly recommended for end-user apps:
+   * a note's blinding lives only in its encrypted payload, so if the API write
+   * fails (or the tab refreshes before it syncs) the note — and its funds —
+   * would be lost. With a vault, self-owned notes are also kept locally and
+   * survive both. Use `localStorageVault()` in browsers. Only the (already
+   * encrypted) ciphertext is stored; the viewing secret is never persisted.
+   */
+  noteVault?: NoteVault;
 }
 
 /** Fully-resolved runtime configuration (internal). */
@@ -63,4 +74,5 @@ export interface ResolvedConfig {
   logger: Logger;
   timeoutMs: number;
   zkVerify: { endpointUrl?: string; seed?: string; domainId: number };
+  noteVault?: NoteVault;
 }

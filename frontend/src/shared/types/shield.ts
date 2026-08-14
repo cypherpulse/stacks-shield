@@ -1,16 +1,39 @@
 /**
- * Types mirroring the STX Shield SDK surface documented in frontendguide.md.
+ * Types mirroring the Stacks Shield SDK surface documented in frontendguide.md.
  * The SDK is the single source of truth — these are structural mirrors only,
  * so the UI stays type-safe while the workspace package provides the runtime.
  */
 
 export type ShieldNetwork = "testnet" | "mainnet";
 
+/**
+ * A protocol asset — native STX or a registered SIP-10 token. Structural mirror
+ * of the SDK's `AssetInfo` (sourced from GET /assets → on-chain asset-registry).
+ */
+export interface AssetInfo {
+  id: number;
+  symbol: string;
+  /** SIP-10 token contract principal ("ADDR.name"), or null for native STX. */
+  token: string | null;
+  /** Base-unit decimals (STX = 6, sBTC = 8, USDCx = 6). */
+  decimals: number;
+  /** Shieldable right now (native STX is always active). */
+  active: boolean;
+  native: boolean;
+  [key: string]: unknown;
+}
+
+/** How the UI names an asset to the SDK: symbol, token principal, AssetInfo, or
+ *  undefined/null ⇒ native STX (the default). */
+export type AssetRef = string | AssetInfo | null | undefined;
+
 export interface ShieldNote {
   id?: string;
   commitment?: string;
-  /** Amount in micro-STX (1 STX = 1_000_000 µSTX). */
+  /** Amount in the asset's base units (µSTX for native STX). */
   amount: bigint | number;
+  /** The asset this note holds. Undefined ⇒ native STX. */
+  asset?: AssetInfo;
   status?: string;
   spent?: boolean;
   createdAt?: string | number;
@@ -40,12 +63,24 @@ export interface WithdrawResponse extends OperationResponse {
   amountReceived: bigint | number;
 }
 
+/** Per-asset protocol totals (shielded + fees), each in its own display units. */
+export interface AssetStat {
+  id: number;
+  symbol: string;
+  decimals: number;
+  native: boolean;
+  shielded: number;
+  fees: number;
+}
+
 export interface Stats {
   shielded: number;
   notes: number;
   operations: number;
   users: number;
   fees: number;
+  /** Per-asset breakdown (STX / sBTC / USDCx …). Absent on a legacy API. */
+  byAsset?: AssetStat[];
   updatedAt: string;
 }
 
@@ -77,16 +112,19 @@ export interface WalletSigner {
   getShieldSecret(): Promise<Uint8Array> | Uint8Array;
 }
 
-/** The client surface the frontend is allowed to use. No extra methods. */
+/** The client surface the frontend is allowed to use. No extra methods.
+ *  Asset params are optional and default to native STX, so existing STX flows
+ *  are unchanged while SIP-10 assets (sBTC, USDCx) route by symbol/token. */
 export interface STXShieldClient {
   connect(): Promise<unknown>;
   disconnect(): Promise<unknown>;
   getAddress(): Promise<string>;
   getStats(): Promise<Stats>;
-  getNotes(): Promise<ShieldNote[]>;
+  getAssets(): Promise<AssetInfo[]>;
+  getNotes(asset?: AssetRef): Promise<ShieldNote[]>;
   getHistory(): Promise<HistoryEntry[]>;
-  shield(amount: number): Promise<ShieldResponse>;
-  transfer(amount: number, recipient: string): Promise<OperationResponse>;
+  shield(amount: number, asset?: AssetRef): Promise<ShieldResponse>;
+  transfer(amount: number, recipient: string, asset?: AssetRef): Promise<OperationResponse>;
   split(note: ShieldNote, amounts: [number, number]): Promise<SplitResponse>;
   merge(notes: [ShieldNote, ShieldNote]): Promise<MergeResponse>;
   withdraw(note: ShieldNote, recipient?: string): Promise<WithdrawResponse>;

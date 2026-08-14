@@ -9,7 +9,7 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
         <Shield className="size-4 text-primary-foreground" strokeWidth={2.4} />
       </span>
       {!compact && (
-        <span className="font-display text-[15px] font-semibold tracking-tight">STX Shield</span>
+        <span className="font-display text-[15px] font-semibold tracking-tight">Stacks Shield</span>
       )}
     </span>
   );

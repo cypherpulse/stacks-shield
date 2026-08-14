@@ -10,7 +10,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { useSplit } from "@/features/split/useSplit";
 import type { ShieldNote } from "@/shared/types/shield";
-import { stxLabel, toStx } from "@/shared/utils/format";
+import { amountLabel, noteAsset, noteDisplay } from "@/shared/utils/format";
 
 export function SplitPage() {
   return (
@@ -31,9 +31,10 @@ function SplitForm() {
   const [a, setA] = useState("");
   const op = useSplit();
 
-  const total = selected ? toStx(selected.note.amount) : 0;
+  const asset = selected ? noteAsset(selected.note) : { symbol: "STX", decimals: 6 };
+  const total = selected ? noteDisplay(selected.note) : 0;
   const amountA = Number(a);
-  const amountB = Number((total - amountA).toFixed(6));
+  const amountB = Number((total - amountA).toFixed(asset.decimals));
   const valid = Boolean(selected) && amountA > 0 && amountB > 0;
 
   return (
@@ -71,7 +72,7 @@ function SplitForm() {
             className="font-mono text-lg"
           />
           <p className="text-xs text-muted-foreground">
-            A + B must equal the original note ({total} STX).
+            A + B must equal the original note ({total} {asset.symbol}).
           </p>
         </div>
 
@@ -82,7 +83,9 @@ function SplitForm() {
           txid={op.data?.txid}
           successTitle="Split complete"
           successDetail={
-            selected ? `${stxLabel(amountA)} + ${stxLabel(amountB)}, two new notes.` : undefined
+            selected
+              ? `${amountLabel(amountA, asset.symbol)} + ${amountLabel(amountB, asset.symbol)}, two new notes.`
+              : undefined
           }
           onDone={() => {
             op.reset();

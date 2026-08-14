@@ -1,4 +1,4 @@
-import { CheckCircle2, Droplets, ExternalLink } from "lucide-react";
+import { CheckCircle2, Coins, Droplets, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -7,9 +7,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { EXPLORER_TX, FAUCET_AMOUNT_STX } from "@/shared/constants/protocol";
+import { EXPLORER_TX, FAUCET_ASSETS, type FaucetAsset } from "@/shared/constants/protocol";
 import { useFaucet } from "@/features/faucet/useFaucet";
 import { useWallet } from "@/features/wallet/useWallet";
+import { cn } from "@/lib/cn";
 import { errorMessage } from "@/shared/utils/format";
 
 const isStacksAddress = (v: string) => /^S[TP][0-9A-Za-z]{37,42}$/.test(v.trim());
@@ -17,6 +18,7 @@ const isStacksAddress = (v: string) => /^S[TP][0-9A-Za-z]{37,42}$/.test(v.trim()
 export function FaucetPage() {
   const { address, isConnected, connect } = useWallet();
   const [target, setTarget] = useState("");
+  const [asset, setAsset] = useState<FaucetAsset>(FAUCET_ASSETS[0]);
   const faucet = useFaucet();
 
   // Prefill with the connected wallet, but let the user send to any address.
@@ -28,17 +30,20 @@ export function FaucetPage() {
   const result = faucet.data;
 
   const claim = () => {
-    faucet.mutate(target.trim(), {
-      onSuccess: () => toast.success(`${FAUCET_AMOUNT_STX} testnet STX is on its way`),
-      onError: (e) => toast.error("Faucet request failed", { description: errorMessage(e) }),
-    });
+    faucet.mutate(
+      { address: target.trim(), asset },
+      {
+        onSuccess: () => toast.success(`${asset.amount} testnet ${asset.symbol} is on its way`),
+        onError: (e) => toast.error("Faucet request failed", { description: errorMessage(e) }),
+      },
+    );
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Testnet faucet"
-        description={`Claim ${FAUCET_AMOUNT_STX} testnet STX to try shielding, transferring and withdrawing.`}
+        description="Claim free testnet STX, USDCx or sBTC to try shielding, transferring and withdrawing."
       />
 
       <Card className="glass max-w-xl gap-5 p-6">
@@ -48,9 +53,41 @@ export function FaucetPage() {
           </span>
           <div>
             <p className="font-display text-2xl font-semibold tracking-tight">
-              {FAUCET_AMOUNT_STX} STX
+              {asset.amount} {asset.symbol}
             </p>
-            <p className="text-xs text-muted-foreground">Free testnet STX, once per address.</p>
+            <p className="text-xs text-muted-foreground">Free testnet {asset.symbol}, once per address.</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Asset</Label>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Faucet asset">
+            {FAUCET_ASSETS.map((a) => {
+              const active = a.symbol === asset.symbol;
+              return (
+                <button
+                  key={a.symbol}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  disabled={faucet.isPending}
+                  onClick={() => {
+                    setAsset(a);
+                    faucet.reset();
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    active
+                      ? "border-primary bg-primary/10 text-primary shadow-glow"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  )}
+                >
+                  <Coins className="size-4" />
+                  {a.amount} {a.symbol}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -86,11 +123,11 @@ export function FaucetPage() {
           <div className="space-y-2 rounded-xl border border-success/30 bg-success/5 p-4">
             <p className="flex items-center gap-2 text-sm font-medium text-success">
               <CheckCircle2 className="size-4" />
-              {result.message || `${FAUCET_AMOUNT_STX} STX sent to your address.`}
+              {result.message || `${asset.amount} ${asset.symbol} sent to your address.`}
             </p>
             {result.txid && (
               <a
-                href={EXPLORER_TX(result.txid)}
+                href={result.explorerUrl || EXPLORER_TX(result.txid)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
@@ -105,23 +142,18 @@ export function FaucetPage() {
           </div>
         ) : (
           <Button size="lg" className="w-full" disabled={!valid || faucet.isPending} onClick={claim}>
-            {faucet.isPending ? "Requesting…" : `Claim ${FAUCET_AMOUNT_STX} STX`}
+            {faucet.isPending ? "Requesting…" : `Claim ${asset.amount} ${asset.symbol}`}
           </Button>
         )}
 
         {result && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            onClick={() => faucet.reset()}
-          >
-            Claim to another address
+          <Button variant="outline" size="sm" className="w-fit" onClick={() => faucet.reset()}>
+            Claim again
           </Button>
         )}
 
         <p className="text-xs text-muted-foreground">
-          Testnet STX only. It has no value and is for testing STX Shield.
+          Testnet assets only. They have no value and are for testing Stacks Shield.
         </p>
       </Card>
     </div>

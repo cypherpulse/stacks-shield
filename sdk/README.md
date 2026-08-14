@@ -1,11 +1,11 @@
-# @stx-shield/sdk
+# @stacks-shield/sdk
 
 **Privacy for STX, in minutes.** Shield, transfer, split, merge and withdraw STX
 with zero-knowledge proofs — without ever touching Noir, UltraHonk, zkVerify,
 Merkle trees, nullifiers, commitments or relayers.
 
 ```ts
-import { STXShield } from "@stx-shield/sdk";
+import { STXShield } from "@stacks-shield/sdk";
 
 const shield = new STXShield({ network: "testnet", signer });
 
@@ -21,8 +21,8 @@ await shield.withdraw(merged);            // back to transparent STX
 ## 1. Installation
 
 ```bash
-npm install @stx-shield/sdk
-# or: pnpm add @stx-shield/sdk  /  yarn add @stx-shield/sdk
+npm install @stacks-shield/sdk
+# or: pnpm add @stacks-shield/sdk  /  yarn add @stacks-shield/sdk
 ```
 
 ESM and CommonJS builds and full TypeScript types are included. The package is
@@ -31,7 +31,7 @@ side-effect-free and tree-shakable — you only bundle what you import.
 ## 2. Quick Start
 
 ```ts
-import { STXShield } from "@stx-shield/sdk";
+import { STXShield } from "@stacks-shield/sdk";
 
 const shield = new STXShield({
   network: "testnet",
@@ -111,7 +111,7 @@ server never learns your note amounts** — they are decrypted only on your devi
 Every error is an `STXShieldError`; catch broadly or narrowly:
 
 ```ts
-import { InvalidNoteError, RelayerError, STXShieldError } from "@stx-shield/sdk";
+import { InvalidNoteError, RelayerError, STXShieldError } from "@stacks-shield/sdk";
 
 try {
   await shield.withdraw(note);

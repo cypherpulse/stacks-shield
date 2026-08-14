@@ -19,7 +19,25 @@ export const WITHDRAW_FEE_RATE = 0.003; // ~0.3% protocol withdraw fee
 export const FAUCET_URL =
   import.meta.env.VITE_FAUCET_URL ?? "https://hermes-faucet-backend.onrender.com/api/claim-stx";
 export const FAUCET_API_KEY = import.meta.env.VITE_FAUCET_API_KEY ?? "hermes_faucet_secret_2026";
-export const FAUCET_AMOUNT_STX = 210;
+export const FAUCET_AMOUNT_STX = 100;
+
+// The faucet dispenses STX + SIP-10 tokens from the Hermes backend. Derive the
+// /api base from FAUCET_URL (which points at .../api/claim-stx) so a single
+// VITE_FAUCET_URL override still drives all three endpoints.
+const FAUCET_BASE = FAUCET_URL.replace(/\/claim-stx\/?$/, "").replace(/\/$/, "");
+
+export interface FaucetAsset {
+  symbol: string;
+  amount: number;
+  /** Full POST endpoint on the Hermes faucet backend. */
+  endpoint: string;
+}
+
+export const FAUCET_ASSETS: FaucetAsset[] = [
+  { symbol: "STX", amount: 100, endpoint: `${FAUCET_BASE}/claim-stx` },
+  { symbol: "USDCx", amount: 1000, endpoint: `${FAUCET_BASE}/claim` },
+  { symbol: "sBTC", amount: 100, endpoint: `${FAUCET_BASE}/claim-sbtc` },
+];
 
 export const EXPLORER_TX = (txid: string) => `https://explorer.hiro.so/txid/${txid}?chain=testnet`;
 

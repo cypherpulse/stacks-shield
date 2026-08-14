@@ -1,8 +1,8 @@
 // =============================================================================
-// @stx-shield/sdk/web -- browser convenience entry
+// @stacks-shield/sdk/web -- browser convenience entry
 // =============================================================================
 // Fetches circuit artifacts over HTTP and builds the (validated) bb.js engine.
-//   import { createWebEngine } from "@stx-shield/sdk/web";
+//   import { createWebEngine } from "@stacks-shield/sdk/web";
 //   const shield = new STXShield({ network: "testnet", signer,
 //     proofEngine: createWebEngine({ artifactsBaseUrl: "/circuits" }),
 //     zkVerify: { endpointUrl: "https://submit.stxshield.io" } });
@@ -17,6 +17,9 @@ import type { ProofEngine } from "./proving/engine.js";
 const FILE: Record<CircuitName, string> = {
   shield: "shield.json", transfer: "transfer.json", split: "split.json",
   merge: "merge.json", withdraw: "withdraw.json", keygen: "keygen.json",
+  // SIP-10 circuit family.
+  "sip10-shield": "sip10-shield.json", "sip10-transfer": "sip10-transfer.json", "sip10-split": "sip10-split.json",
+  "sip10-merge": "sip10-merge.json", "sip10-withdraw": "sip10-withdraw.json",
 };
 
 export interface WebEngineOptions {

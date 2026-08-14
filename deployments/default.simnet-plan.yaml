@@ -70,6 +70,26 @@ plan:
       path: contracts/privacy-registry.clar
       clarity-version: 3
     - transaction-type: emulated-contract-publish
+      contract-name: sip-010-trait
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/sip-010-trait.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: asset-registry
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/asset-registry.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: mock-sbtc
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/mock-sbtc.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: mock-usdc
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/mock-usdc.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
       contract-name: note-manager
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/note-manager.clar
@@ -88,6 +108,21 @@ plan:
       contract-name: privacy-pool
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/privacy-pool.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: sip10-protocol-fees
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/sip10-protocol-fees.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: sip10-zk-verifier
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/sip10-zk-verifier.clar
+      clarity-version: 3
+    - transaction-type: emulated-contract-publish
+      contract-name: sip10-pool
+      emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+      path: contracts/sip10-pool.clar
       clarity-version: 3
     - transaction-type: emulated-contract-publish
       contract-name: split-merge-manager

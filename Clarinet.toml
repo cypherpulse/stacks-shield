@@ -35,6 +35,43 @@ path = "contracts/split-merge-manager.clar"
 clarity_version = 3
 epoch = "3.1"
 
+# --- SIP-10 extension (new, additive; STX contracts above are frozen) ---
+[contracts.sip-010-trait]
+path = "contracts/sip-010-trait.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.asset-registry]
+path = "contracts/asset-registry.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.sip10-protocol-fees]
+path = "contracts/sip10-protocol-fees.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.sip10-zk-verifier]
+path = "contracts/sip10-zk-verifier.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.sip10-pool]
+path = "contracts/sip10-pool.clar"
+clarity_version = 3
+epoch = "3.1"
+
+# --- Test-only SIP-010 token fixtures (not part of the protocol) ---
+[contracts.mock-sbtc]
+path = "contracts/mock-sbtc.clar"
+clarity_version = 3
+epoch = "3.1"
+
+[contracts.mock-usdc]
+path = "contracts/mock-usdc.clar"
+clarity_version = 3
+epoch = "3.1"
+
 # Check-checker settings:
 # trusted_sender: if true, inputs are trusted after tx_sender has been checked.
 # trusted_caller: if true, inputs are trusted after contract-caller has been checked.

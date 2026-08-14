@@ -1,4 +1,5 @@
 import { MICRO_PER_STX } from "@/shared/constants/protocol";
+import type { ShieldNote } from "@/shared/types/shield";
 
 /** Normalizes a note amount (bigint µSTX or number STX) into STX. */
 export function toStx(amount: bigint | number | undefined | null): number {
@@ -6,6 +7,56 @@ export function toStx(amount: bigint | number | undefined | null): number {
   if (typeof amount === "bigint") return Number(amount) / MICRO_PER_STX;
   // Numbers coming back from the SDK are STX already unless they are huge.
   return amount >= MICRO_PER_STX ? amount / MICRO_PER_STX : amount;
+}
+
+// --- Asset-aware helpers (multi-asset: STX, sBTC, USDCx …) -------------------
+// A note's `amount` is in its asset's base units (bigint); different assets have
+// different decimals (STX/USDCx = 6, sBTC = 8), so denomination MUST go through
+// the note's asset — never the STX-only `toStx` heuristic.
+
+/** Base units (bigint, or a number already in base units) → display value. */
+export function unitsToDisplay(
+  amount: bigint | number | undefined | null,
+  decimals: number,
+): number {
+  if (amount === undefined || amount === null) return 0;
+  const n = typeof amount === "bigint" ? Number(amount) : amount;
+  return n / 10 ** decimals;
+}
+
+/** The asset a note holds (defaults to native STX for legacy/undefined). */
+export function noteAsset(note: Pick<ShieldNote, "asset">): { symbol: string; decimals: number } {
+  return { symbol: note.asset?.symbol ?? "STX", decimals: note.asset?.decimals ?? 6 };
+}
+
+/** A note's value as a display number, denominated in its own asset. */
+export function noteDisplay(note: ShieldNote): number {
+  return unitsToDisplay(note.amount, noteAsset(note).decimals);
+}
+
+/** Format a display value with an asset symbol, e.g. "200,000 sBTC". */
+export function amountLabel(value: number, symbol: string, digits = 8): string {
+  return `${(value || 0).toLocaleString(undefined, { maximumFractionDigits: digits })} ${symbol}`;
+}
+
+/** A note's value formatted with its own asset symbol. */
+export function noteLabel(note: ShieldNote): string {
+  const { symbol, decimals } = noteAsset(note);
+  return amountLabel(noteDisplay(note), symbol, Math.min(decimals, 8));
+}
+
+/** Do two notes hold the same asset? (both undefined ⇒ native STX ⇒ true) */
+export function sameAsset(a: Pick<ShieldNote, "asset">, b: Pick<ShieldNote, "asset">): boolean {
+  return noteAsset(a).symbol === noteAsset(b).symbol;
+}
+
+/** Format a USD value in full, e.g. "$12,627,600,000.00" (never abbreviated). */
+export function formatUsd(value: number | undefined | null): string {
+  return (value ?? 0).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  });
 }
 
 export function formatStx(amount: bigint | number | undefined | null, digits = 6): string {

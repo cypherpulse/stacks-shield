@@ -23,7 +23,7 @@ import { WITHDRAW_FEE_RATE } from "@/shared/constants/protocol";
 import { useWallet } from "@/features/wallet/useWallet";
 import { useWithdraw } from "@/features/withdraw/useWithdraw";
 import type { ShieldNote } from "@/shared/types/shield";
-import { stxLabel, toStx } from "@/shared/utils/format";
+import { amountLabel, noteAsset, noteDisplay } from "@/shared/utils/format";
 
 export function WithdrawPage() {
   return (
@@ -42,9 +42,11 @@ function WithdrawForm() {
   const [recipient, setRecipient] = useState("");
   const op = useWithdraw();
 
-  const gross = selected ? toStx(selected.note.amount) : 0;
+  const symbol = selected ? noteAsset(selected.note).symbol : "STX";
+  const gross = selected ? noteDisplay(selected.note) : 0;
   const fee = gross * WITHDRAW_FEE_RATE;
   const net = gross - fee;
+  const label = (v: number) => amountLabel(v, symbol);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -74,15 +76,15 @@ function WithdrawForm() {
         <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Gross amount</span>
-            <span className="font-mono">{stxLabel(gross)}</span>
+            <span className="font-mono">{label(gross)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Protocol fee (~0.3%)</span>
-            <span className="font-mono">{stxLabel(fee)}</span>
+            <span className="font-mono">{label(fee)}</span>
           </div>
           <div className="flex justify-between border-t border-border pt-2 font-medium">
             <span>You receive</span>
-            <span className="font-mono">{stxLabel(net)}</span>
+            <span className="font-mono">{label(net)}</span>
           </div>
         </div>
 
@@ -92,7 +94,7 @@ function WithdrawForm() {
           label={op.stepLabel}
           txid={op.data?.txid}
           successTitle="Withdrawal complete"
-          successDetail={`${stxLabel(net)} sent to ${recipient.trim() || address || "your wallet"}.`}
+          successDetail={`${label(net)} sent to ${recipient.trim() || address || "your wallet"}.`}
           onDone={() => {
             op.reset();
             setSelected(null);
@@ -111,7 +113,7 @@ function WithdrawForm() {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm withdrawal</AlertDialogTitle>
               <AlertDialogDescription>
-                {stxLabel(net)} will be sent to {recipient.trim() || address}. This spends the
+                {label(net)} will be sent to {recipient.trim() || address}. This spends the
                 selected note permanently.
               </AlertDialogDescription>
             </AlertDialogHeader>

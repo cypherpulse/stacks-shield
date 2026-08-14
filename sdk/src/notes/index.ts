@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- note store, shield address, discovery
+// @stacks-shield/sdk -- note store, shield address, discovery
 // =============================================================================
 
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -11,9 +11,10 @@ import {
   decodeEncryptedNote,
   type ViewingKeyPair,
 } from "../crypto/encryption.js";
-import { commitmentOfSecret } from "../crypto/commitments.js";
+import { commitmentOfSecret, assetFieldOf } from "../crypto/commitments.js";
 import { toHex32, bytesToHex, hexToBytes } from "../crypto/field.js";
 import type { EncryptedNoteRecord } from "../providers/api.js";
+import type { AssetInfo } from "../types/asset.js";
 import { InvalidNoteError } from "../errors/index.js";
 
 /** A shareable STX Shield address: the owner public key + viewing public key.
@@ -71,6 +72,11 @@ export class NoteStore {
     const n = this.notes.get(commitment);
     if (n) this.notes.set(commitment, { ...n, spent: true });
   }
+  /** Forget a note entirely — used to roll back an optimistic note whose
+   *  on-chain transaction reverted (so it never masquerades as spendable). */
+  remove(commitment: string): void {
+    this.notes.delete(commitment);
+  }
   unspent(): ShieldNote[] {
     return [...this.notes.values()].filter((n) => !n.spent);
   }
@@ -88,7 +94,11 @@ export const discoverNotes = (
   records: EncryptedNoteRecord[],
   viewing: ViewingKeyPair,
   owner: OwnerKey,
+  /** Supported assets, so a discovered note's `assetId` (from its payload)
+   *  resolves to its asset. Omit for STX-only (backward compatible). */
+  assets: AssetInfo[] = [],
 ): ShieldNote[] => {
+  const byId = new Map(assets.map((a) => [a.id, a]));
   const out: ShieldNote[] = [];
   for (const r of records) {
     if (!r.ciphertext) continue;
@@ -99,6 +109,12 @@ export const discoverNotes = (
       continue;
     }
     if (!payload) continue;
+    // Resolve the note's asset from the payload. Native STX (no assetId) and any
+    // SIP-10 asset both work; an unknown assetId means we cannot form the
+    // asset-bound commitment, so skip it (it is not spendable by us anyway).
+    const asset = payload.assetId ? byId.get(payload.assetId) : undefined;
+    if (payload.assetId && !asset) continue;
+    const assetField = asset && !asset.native ? assetFieldOf(asset.token as string) : undefined;
     const secret: NoteSecret = {
       // The note is owned by whoever is decrypting it, so the spend key is THIS
       // user's owner secret — not the (possibly zero) value the sender embedded.
@@ -108,10 +124,13 @@ export const discoverNotes = (
       ownerPkY: owner.pkY,
       blinding: payload.blinding,
       leafIndex: payload.treePosition,
+      assetId: asset?.native ? undefined : asset?.id,
+      assetField,
     };
-    // Confirm the decrypted secret actually reproduces the on-chain commitment.
+    // Confirm the decrypted secret actually reproduces the on-chain (asset-bound)
+    // commitment. Wrong asset ⇒ wrong commitment ⇒ skipped.
     if (toHex32(commitmentOfSecret(payload.amount, secret)) !== normalize(r.commitment)) continue;
-    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, spent: Boolean(r.spent), status: r.status, secret });
+    out.push({ commitment: r.commitment, ciphertext: r.ciphertext, root: r.root, txid: r.txid, amount: payload.amount, asset, spent: Boolean(r.spent), status: r.status, secret });
   }
   return out;
 };

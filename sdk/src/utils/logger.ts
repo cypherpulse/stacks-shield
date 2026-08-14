@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- logger
+// @stacks-shield/sdk -- logger
 // =============================================================================
 // Minimal, dependency-free, and SECRET-SAFE. The SDK only ever passes public
 // data here; secrets, keys, nullifiers and Merkle paths are never logged.

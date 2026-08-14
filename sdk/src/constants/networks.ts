@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- network constants
+// @stacks-shield/sdk -- network constants
 // =============================================================================
 
 import type { Network } from "../types/config.js";

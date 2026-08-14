@@ -55,8 +55,8 @@ const steps: Step[] = [
     title: "Transfer privately",
     what: "Send a whole note to someone's shield address with no on-chain trace of the sender.",
     how: [
-      "Ask the recipient for their STX Shield address (Settings, then Show my shield address).",
-      "The recipient must have opened STX Shield once, so their address exists.",
+      "Ask the recipient for their Stacks Shield address (Settings, then Show my shield address).",
+      "The recipient must have opened Stacks Shield once, so their address exists.",
       "Pick a note, paste their shield address, and send.",
     ],
     to: "/transfer",

@@ -9,7 +9,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { useMerge } from "@/features/merge/useMerge";
 import type { ShieldNote } from "@/shared/types/shield";
-import { formatStx, stxLabel, toStx } from "@/shared/utils/format";
+import { amountLabel, noteAsset, noteDisplay, noteLabel, sameAsset } from "@/shared/utils/format";
 import { cn } from "@/lib/cn";
 
 export function MergePage() {
@@ -27,8 +27,12 @@ function MergeForm() {
   const [picked, setPicked] = useState<{ id: string; note: ShieldNote }[]>([]);
   const op = useMerge();
 
-  const total = picked.reduce((sum, p) => sum + toStx(p.note.amount), 0);
-  const valid = picked.length === 2;
+  // Merge combines two notes of the SAME asset — the pool and circuit are
+  // asset-bound, so STX + sBTC (etc.) can never merge into one note.
+  const assetsMatch = picked.length < 2 || sameAsset(picked[0].note, picked[1].note);
+  const symbol = picked[0] ? noteAsset(picked[0].note).symbol : "STX";
+  const total = picked.reduce((sum, p) => sum + noteDisplay(p.note), 0);
+  const valid = picked.length === 2 && assetsMatch;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -54,6 +58,12 @@ function MergeForm() {
           <span className="font-mono">{picked.length} / 2</span>
         </div>
 
+        {!assetsMatch && (
+          <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
+            Both notes must be the same asset to merge.
+          </p>
+        )}
+
         {/* Merge visual: note 1 + note 2 -> one merged note */}
         <div className="rounded-xl border border-border bg-muted/20 p-4">
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
@@ -68,7 +78,9 @@ function MergeForm() {
             <div
               className={cn(
                 "flex-1 rounded-lg border p-3 text-center transition-colors",
-                valid ? "border-primary/50 bg-primary/10 shadow-glow" : "border-dashed border-border bg-muted/30",
+                valid
+                  ? "border-primary/50 bg-primary/10 shadow-glow"
+                  : "border-dashed border-border bg-muted/30",
               )}
             >
               <p className="text-[11px] tracking-wide text-muted-foreground uppercase">Merged note</p>
@@ -78,7 +90,7 @@ function MergeForm() {
                   valid ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                {valid ? stxLabel(total) : "—"}
+                {valid ? amountLabel(total, symbol) : "—"}
               </p>
             </div>
           </div>
@@ -90,7 +102,7 @@ function MergeForm() {
           label={op.stepLabel}
           txid={op.data?.txid}
           successTitle="Merge complete"
-          successDetail={`Combined into a single ${stxLabel(total)} note.`}
+          successDetail={`Combined into a single ${amountLabel(total, symbol)} note.`}
           onDone={() => {
             op.reset();
             setPicked([]);
@@ -131,7 +143,7 @@ function MergeSlot({ note, index }: { note?: ShieldNote; index: number }) {
           note ? "text-teal" : "text-muted-foreground",
         )}
       >
-        {note ? formatStx(note.amount) : "Select"}
+        {note ? noteLabel(note) : "Select"}
       </p>
     </div>
   );

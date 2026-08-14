@@ -18,7 +18,7 @@
 //   5. the protocol is active and the operation is enabled
 
 import { Cl, cvToHex, cvToJSON, hexToCV, type ClarityValue } from "@stacks/transactions";
-import { RelayError, type Operation, type RelayRequest } from "../types/index.js";
+import { RelayError, isSip10, type Operation, type RelayRequest } from "../types/index.js";
 
 export interface ChainReader {
   readOnly(contract: string, fn: string, args: ClarityValue[]): Promise<unknown>;
@@ -114,11 +114,14 @@ export class ProofValidator {
   }
 
   /** The aggregation root must be on chain. Without it the operation cannot
-   *  succeed, so submitting would burn the relayer's fee for nothing. */
+   *  succeed, so submitting would burn the relayer's fee for nothing. SIP-10
+   *  aggregations live on the dedicated sip10-zk-verifier; native on zk-verifier.
+   *  (The registry checks above are shared, so they need no asset branch.) */
   private async assertAggregationPublished(r: RelayRequest): Promise<void> {
     const { domainId, aggregationId } = r.inclusion;
+    const verifier = isSip10(r) ? "sip10-zk-verifier" : "zk-verifier";
     const agg = unwrap(
-      await this.reader.readOnly("zk-verifier", "get-aggregation", [
+      await this.reader.readOnly(verifier, "get-aggregation", [
         Cl.uint(domainId),
         Cl.uint(aggregationId),
       ]),

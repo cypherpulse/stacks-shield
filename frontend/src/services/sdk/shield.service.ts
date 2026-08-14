@@ -1,11 +1,11 @@
-import { STXShield } from "@stx-shield/sdk";
-import { createWebEngine } from "@stx-shield/sdk/web";
+import { STXShield, localStorageVault } from "@stacks-shield/sdk";
+import { createWebEngine } from "@stacks-shield/sdk/web";
 
 import { API_URL, NETWORK, RELAYER_URL, ZKVERIFY_URL } from "@/shared/constants/protocol";
 import type { STXShieldClient, WalletSigner } from "@/shared/types/shield";
 
 /**
- * The single, mandatory entry point to `@stx-shield/sdk` (a workspace package).
+ * The single, mandatory entry point to `@stacks-shield/sdk` (a workspace package).
  *
  * The SDK is a hard dependency: it is imported statically, so if it cannot be
  * resolved the frontend BUILD fails — there is no runtime fallback, mock or
@@ -45,6 +45,11 @@ export class ShieldService {
       apiUrl: API_URL,
       relayerUrls: [RELAYER_URL],
       proofEngine: createWebEngine({ artifactsBaseUrl: "/circuits", threads: threadCount() }),
+      // Local durability: a note's blinding lives only in its encrypted payload,
+      // so if the API write fails (or the tab refreshes before it syncs) the note
+      // and its funds would be lost. The vault keeps an encrypted local copy
+      // (scoped per wallet); the backend DB is still the primary/shared store.
+      noteVault: localStorageVault(`stxshield.notes.${ShieldService.address ?? "default"}`),
       ...(ShieldService.signer ? { signer: ShieldService.signer } : {}),
       ...(ZKVERIFY_URL ? { zkVerify: { endpointUrl: ZKVERIFY_URL } } : {}),
     } as unknown as ConstructorParameters<typeof STXShield>[0]);

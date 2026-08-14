@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@stx-shield/sdk` are documented here. This project
+All notable changes to `@stacks-shield/sdk` are documented here. This project
 follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [1.0.0] — 2026-07-29

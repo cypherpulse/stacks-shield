@@ -4,7 +4,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { ShieldNote } from "@/shared/types/shield";
-import { formatStx, noteKey, relativeTime, truncate } from "@/shared/utils/format";
+import { noteKey, noteLabel, relativeTime, truncate } from "@/shared/utils/format";
 
 export function NoteCard({
   note,
@@ -61,7 +61,7 @@ export function NoteCard({
           {selected ? <Check className="size-5" strokeWidth={2.75} /> : <Coins className="size-5" />}
         </span>
         <div className="min-w-0">
-          <p className="font-display text-lg leading-tight font-semibold">{formatStx(note.amount)}</p>
+          <p className="font-display text-lg leading-tight font-semibold">{noteLabel(note)}</p>
           <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{truncate(id, 8, 6)}</p>
         </div>
       </div>

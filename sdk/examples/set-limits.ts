@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- admin: lift the shield/withdraw limits on the LIVE contract
+// @stacks-shield/sdk -- admin: lift the shield/withdraw limits on the LIVE contract
 // =============================================================================
 // Calls privacy-registry.update-protocol-limits with the protocol-admin key, so
 // you do NOT need to redeploy. update-protocol-limits replaces the WHOLE set, so

@@ -4,15 +4,31 @@
 // Returns plain JSON-safe objects (no BigInt) for the routes.
 
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { Cl, cvToHex, cvToJSON, hexToCV } from "@stacks/transactions";
 import { db } from "../db/client.js";
 import { aggregations, notes, roots, stats, transactions, fees } from "../db/schema.js";
+import { config } from "../config.js";
+import { callReadOnly } from "../utils/hiro.js";
+import { getAssets } from "./assets.js";
 
 const MICRO = 1_000_000;
+
+/** Read a read-only uint from a contract, tolerating any failure (returns 0n). */
+const readUint = async (contract: string, fn: string, args: string[] = []): Promise<bigint> => {
+  try {
+    const hex = await callReadOnly(contract, fn, args);
+    if (!hex) return 0n;
+    const j = cvToJSON(hexToCV(hex)) as { value?: unknown };
+    return j.value != null ? BigInt(j.value as string) : 0n;
+  } catch {
+    return 0n;
+  }
+};
 
 // A pending, never-confirmed note this old is treated as failed (its tx almost
 // certainly reverted or was dropped).
 const STALE_PENDING_MS = 45 * 60 * 1000;
-const deriveStatus = (status: string, root: string, createdAt: Date): string => {
+const deriveStatus = (status: string, root: string | null, createdAt: Date): string => {
   if (status !== "pending") return status;
   if (!root && Date.now() - createdAt.getTime() > STALE_PENDING_MS) return "failed";
   return "pending";
@@ -39,6 +55,68 @@ export const getStats = async () => {
     fees: feeRow ? Number(feeRow.totalFees) / MICRO : 0,
     updatedAt: row?.updatedAt?.toISOString() ?? null,
   };
+};
+
+/**
+ * Per-asset protocol totals (shielded amount + fees collected), read live from
+ * the pools/fee contracts so every registered asset — STX, sBTC, USDCx … — is
+ * reported in its own base units. STX shielded = native pool balance; SIP-10
+ * shielded = the pool's tracked `get-shielded-total`. Fees: native from the DB
+ * counter, SIP-10 from each asset's on-chain treasury. Amounts are returned as
+ * display values (divided by the asset's decimals).
+ */
+let assetStatsCache: { at: number; data: AssetStat[] } | null = null;
+const ASSET_STATS_TTL_MS = 30_000;
+
+type AssetStat = { id: number; symbol: string; decimals: number; native: boolean; shielded: number; fees: number };
+
+export const getAssetStats = async (): Promise<AssetStat[]> => {
+  if (assetStatsCache && Date.now() - assetStatsCache.at < ASSET_STATS_TTL_MS) return assetStatsCache.data;
+  const assets = await getAssets();
+  const [feeRow] = await db.select().from(fees).where(eq(fees.id, "global"));
+  const nativeFees = feeRow ? feeRow.totalFees : 0n;
+
+  const out: AssetStat[] = [];
+  for (const a of assets) {
+    let shieldedBase: bigint;
+    let feesBase: bigint;
+    if (a.native) {
+      shieldedBase = await readUint(config.contracts.privacyPool, "get-pool-balance");
+      feesBase = nativeFees;
+    } else {
+      const uid = [cvToHex(Cl.uint(a.id))];
+      shieldedBase = await readUint(config.contracts.sip10Pool, "get-shielded-total", uid);
+      feesBase = await readTreasuryCollected(a.id);
+    }
+    const denom = 10 ** a.decimals;
+    out.push({
+      id: a.id,
+      symbol: a.symbol,
+      decimals: a.decimals,
+      native: a.native,
+      shielded: Number(shieldedBase) / denom,
+      fees: Number(feesBase) / denom,
+    });
+  }
+  assetStatsCache = { at: Date.now(), data: out };
+  return out;
+};
+
+/** Total fees collected for a SIP-10 asset, from its on-chain treasury tuple. */
+const readTreasuryCollected = async (uid: number): Promise<bigint> => {
+  try {
+    const hex = await callReadOnly(config.contracts.sip10ProtocolFees, "get-asset-treasury", [
+      cvToHex(Cl.uint(uid)),
+    ]);
+    if (!hex) return 0n;
+    const j = cvToJSON(hexToCV(hex)) as {
+      value?: { "total-collected"?: { value?: string } };
+    };
+    const collected = j.value?.["total-collected"]?.value;
+    return collected != null ? BigInt(collected) : 0n;
+  } catch {
+    return 0n;
+  }
 };
 
 export const getFees = async () => {

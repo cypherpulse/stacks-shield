@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- retry with exponential backoff
+// @stacks-shield/sdk -- retry with exponential backoff
 // =============================================================================
 // Applies to API calls, relayer calls and authentication. 3 attempts by
 // default with exponential backoff. Only retries transient failures; a caller

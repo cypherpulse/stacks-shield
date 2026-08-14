@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- proof engine interface
+// @stacks-shield/sdk -- proof engine interface
 // =============================================================================
 // The ONLY place zero-knowledge lives. Everything the developer would need to
 // know about Noir, UltraHonk, Grumpkin keys, witnesses and zkVerify is hidden
@@ -58,7 +58,12 @@ export interface NoteWitness {
   ownerPkY: bigint;
   blinding: bigint;
 }
-export interface ShieldWitness {
+/** Present ⇒ prove against the SIP-10 circuit family, binding this asset_id
+ *  (= fePrincipal(token)) as a public input. Absent/0 ⇒ native STX circuits. */
+export interface AssetBound {
+  assetField?: bigint;
+}
+export interface ShieldWitness extends AssetBound {
   note: NoteWitness;
   commitment: bigint;
   ownerCommitment: bigint;
@@ -69,7 +74,7 @@ export interface MembershipWitness {
   siblings: bigint[];
   merkleRoot: bigint;
 }
-export interface TransferWitness {
+export interface TransferWitness extends AssetBound {
   nullifier: bigint;
   newCommitment: bigint;
   newOwnerCommitment: bigint;
@@ -78,7 +83,7 @@ export interface TransferWitness {
   output: NoteWitness;
   membership: MembershipWitness;
 }
-export interface SplitWitness {
+export interface SplitWitness extends AssetBound {
   nullifier: bigint;
   commitment1: bigint;
   ownerCommitment1: bigint;
@@ -90,7 +95,7 @@ export interface SplitWitness {
   out2: NoteWitness;
   membership: MembershipWitness;
 }
-export interface MergeWitness {
+export interface MergeWitness extends AssetBound {
   nullifier1: bigint;
   nullifier2: bigint;
   commitment: bigint;
@@ -103,7 +108,7 @@ export interface MergeWitness {
   membership2: MembershipWitness;
   output: NoteWitness;
 }
-export interface WithdrawWitness {
+export interface WithdrawWitness extends AssetBound {
   nullifier: bigint;
   amount: bigint;
   recipientHash: bigint;

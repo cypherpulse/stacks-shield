@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- typed errors
+// @stacks-shield/sdk -- typed errors
 // =============================================================================
 // Every error thrown by the SDK is an instance of STXShieldError, so callers
 // can catch broadly or narrowly:

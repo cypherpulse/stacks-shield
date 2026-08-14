@@ -1,0 +1,7 @@
+[package]
+name = "sip10_transfer_note"
+type = "bin"
+authors = ["STX Shield"]
+
+[dependencies]
+stx_shield_sip10_lib = { path = "../lib" }

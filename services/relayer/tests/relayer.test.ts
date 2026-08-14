@@ -47,6 +47,22 @@ const withdrawReq = () => ({
   inclusion,
 });
 
+const splitReq = () => ({
+  nullifier: b32(1, 0x4e),
+  commitment1: b32(1, 0x3c), ownerCommitment1: b32(1, 0x4f), metadata1: b32(1, 0x4d),
+  commitment2: b32(2, 0x3c), ownerCommitment2: b32(2, 0x4f), metadata2: b32(2, 0x4d),
+  currentRoot: b32(1, 0x52), newRoot: b32(2, 0x52), inclusion,
+});
+
+const mergeReq = () => ({
+  nullifier1: b32(1, 0x4e), nullifier2: b32(2, 0x4e),
+  commitment: b32(1, 0x3c), ownerCommitment: b32(1, 0x4f), metadata: b32(1, 0x4d),
+  currentRoot: b32(1, 0x52), newRoot: b32(2, 0x52), inclusion,
+});
+
+/** A registered SIP-10 asset (sBTC testnet) — presence of `token` routes to sip10-pool. */
+const SIP10_TOKEN = "ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token";
+
 /** A chain that says yes to everything, so tests exercise the relayer. */
 class HappyChain implements ChainReader {
   spentNullifiers = new Set<string>();
@@ -207,6 +223,71 @@ describe("request validation", () => {
       }
     }
     expect(limited).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// SIP-10 multi-asset routing (extends the SAME service; native path unchanged)
+// ===========================================================================
+
+/** Records which contract each read-only call targeted, to prove asset routing. */
+class RecordingChain extends HappyChain {
+  readonly calls: Array<{ contract: string; fn: string }> = [];
+  async readOnly(c: string, fn: string, args: unknown[]): Promise<unknown> {
+    this.calls.push({ contract: c, fn });
+    return super.readOnly(c, fn, args);
+  }
+}
+
+describe("SIP-10 routing", () => {
+  it("routes each op to sip10-pool with the token trait prepended", () => {
+    const t = buildCall("transfer", { ...transferReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    expect(t.contract).toBe("sip10-pool");
+    expect(t.fn).toBe("transfer");
+    expect(t.args).toHaveLength(11); // token + 6 op fields + 4 inclusion
+
+    const w = buildCall("withdraw", { ...withdrawReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    expect(w.contract).toBe("sip10-pool");
+    expect(w.fn).toBe("withdraw");
+    expect(w.args).toHaveLength(9); // token + 4 + 4
+
+    const s = buildCall("split", { ...splitReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    expect(s.contract).toBe("sip10-pool");
+    expect(s.fn).toBe("split"); // sip10-pool hosts split (native uses split-merge-manager.split-note)
+    expect(s.args).toHaveLength(14); // token + 9 + 4
+
+    const m = buildCall("merge", { ...mergeReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    expect(m.contract).toBe("sip10-pool");
+    expect(m.fn).toBe("merge-notes");
+    expect(m.args).toHaveLength(12); // token + 7 + 4
+  });
+
+  it("leaves native STX routing unchanged (backward compatible)", () => {
+    expect(buildCall("transfer", transferReq() as RelayRequest).contract).toBe("privacy-pool");
+    const s = buildCall("split", splitReq() as unknown as RelayRequest);
+    expect(s.contract).toBe("split-merge-manager");
+    expect(s.fn).toBe("split-note");
+    expect(s.args).toHaveLength(13); // no token prefix
+  });
+
+  it("validates a SIP-10 aggregation against sip10-zk-verifier; native against zk-verifier", async () => {
+    const sip = new RecordingChain();
+    await makeService(sip).accept("transfer", { ...transferReq(), token: SIP10_TOKEN });
+    expect(sip.calls.some((c) => c.contract === "sip10-zk-verifier" && c.fn === "get-aggregation")).toBe(true);
+
+    const stx = new RecordingChain();
+    await makeService(stx).accept("transfer", transferReq());
+    expect(stx.calls.some((c) => c.contract === "zk-verifier" && c.fn === "get-aggregation")).toBe(true);
+  });
+
+  it("submits a SIP-10 operation through the same queue/submit path", async () => {
+    const submitted: unknown[] = [];
+    const service = makeService(new HappyChain(), submitted);
+    const req = { ...transferReq(), token: SIP10_TOKEN };
+    await service.accept("transfer", req);
+    await settle();
+    expect(submitted).toHaveLength(1);
+    expect((submitted[0] as { r: { token?: string } }).r.token).toBe(SIP10_TOKEN);
   });
 });
 

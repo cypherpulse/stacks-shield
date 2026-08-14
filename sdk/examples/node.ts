@@ -1,17 +1,17 @@
 // =============================================================================
-// @stx-shield/sdk -- Node example
+// @stacks-shield/sdk -- Node example
 // =============================================================================
 //   npx tsx examples/node.ts
 //
 // A full private lifecycle from Node. Requires a proof engine (the Noir +
 // Barretenberg toolchain) and a key-based signer.
 
-import { STXShield, type WalletSigner } from "@stx-shield/sdk";
+import { STXShield, type WalletSigner } from "@stacks-shield/sdk";
 
 // A minimal key-based signer. In a real app, back it with your wallet library.
 declare const signer: WalletSigner;
 // A Node proof engine (toolchain-backed). See the SDK's proving guide.
-declare const nodeProofEngine: import("@stx-shield/sdk").ProofEngine;
+declare const nodeProofEngine: import("@stacks-shield/sdk").ProofEngine;
 
 async function main() {
   const shield = new STXShield({

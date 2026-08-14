@@ -31,8 +31,9 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { LINKS } from "@/shared/constants/protocol";
 import { useStats } from "@/features/dashboard/useStats";
+import { priceFor, usePrices } from "@/features/assets/usePrices";
 import { useThemeStore } from "@/store/theme";
-import { formatNumber } from "@/shared/utils/format";
+import { formatNumber, formatUsd } from "@/shared/utils/format";
 
 const navLinks = [
   { href: "#features", label: "Features" },
@@ -109,8 +110,8 @@ const privacyPoints = [
 
 const faqs = [
   {
-    q: "Is STX Shield custodial?",
-    a: "No. Your keys and note secrets are derived on your device and never leave it. STX Shield can never move your funds.",
+    q: "Is Stacks Shield custodial?",
+    a: "No. Your keys and note secrets are derived on your device and never leave it. Stacks Shield can never move your funds.",
   },
   {
     q: "What does 'private' actually mean here?",
@@ -130,7 +131,7 @@ const faqs = [
   },
   {
     q: "Is it safe to use real STX?",
-    a: "Not yet. STX Shield runs on public Stacks Testnet. Use testnet STX only. A mainnet release comes later.",
+    a: "Not yet. Stacks Shield runs on public Stacks Testnet. Use testnet STX only. A mainnet release comes later.",
   },
 ];
 
@@ -142,14 +143,27 @@ const accentText: Record<string, string> = {
 
 export function Landing() {
   const { data: stats, isLoading } = useStats();
+  const { data: prices } = usePrices();
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
 
+  // Protocol totals across every asset (STX / sBTC / USDCx …), bridged to USD so
+  // the headline is one comparable figure rather than STX alone.
+  const proto = stats?.byAsset ?? [];
+  const shieldedUsd = proto.reduce((s, a) => s + a.shielded * priceFor(prices, a.symbol), 0);
+  const feesUsd = proto.reduce((s, a) => s + a.fees * priceFor(prices, a.symbol), 0);
+
   const metrics = [
-    { label: "Total shielded", value: isLoading ? "…" : `${formatNumber(stats?.shielded)} STX` },
+    {
+      label: "Total shielded",
+      value: isLoading ? "…" : shieldedUsd > 0 ? formatUsd(shieldedUsd) : `${formatNumber(stats?.shielded)} STX`,
+    },
     { label: "Private notes", value: isLoading ? "…" : formatNumber(stats?.notes) },
     { label: "Operations", value: isLoading ? "…" : formatNumber(stats?.operations) },
-    { label: "Fees collected", value: isLoading ? "…" : `${formatNumber(stats?.fees)} STX` },
+    {
+      label: "Fees collected",
+      value: isLoading ? "…" : feesUsd > 0 ? formatUsd(feesUsd) : `${formatNumber(stats?.fees)} STX`,
+    },
   ];
 
   return (
@@ -458,7 +472,7 @@ export function Landing() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Logo />
           <p className="text-xs text-muted-foreground">
-            STX Shield · Public Stacks Testnet · Use testnet STX only
+            Stacks Shield · Public Stacks Testnet · Use testnet STX only
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a href={LINKS.docs} target="_blank" rel="noreferrer" className="hover:text-foreground">

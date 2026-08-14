@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- operation response types
+// @stacks-shield/sdk -- operation response types
 // =============================================================================
 
 import type { ShieldNote } from "./note.js";

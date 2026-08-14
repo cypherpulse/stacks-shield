@@ -69,10 +69,18 @@ export const notes = pgTable(
     commitment: text("commitment").notNull().unique(),
     ciphertext: text("ciphertext"),
     wallet: text("wallet"),
-    root: text("root").notNull(),
+    // Nullable: commitments seen only via the registry's asset-agnostic
+    // `commitment-registered` event (e.g. SIP-10 split outputs) carry a leaf
+    // index but no root — the shared tree is rebuilt from commitment+leafIndex,
+    // not per-note root. Pool-event inserts still set it.
+    root: text("root"),
     txid: text("txid").notNull(),
     leafIndex: integer("leaf_index"),
-    type: text("type").notNull(), // shield | transfer | split | merge
+    type: text("type").notNull(), // shield | transfer | split | merge | note
+    // Multi-asset: the SIP-10 asset uid this commitment belongs to. NULL = native
+    // STX. The commitment already binds the asset cryptographically; this is
+    // indexed metadata (the shared Merkle tree itself is asset-agnostic).
+    assetId: integer("asset_id"),
     // pending  = owner registered the note but it is not yet observed on chain
     // confirmed = the indexer has seen the commitment on chain (root/txid filled)
     // failed    = a pending note whose tx never landed (derived when stale)
@@ -126,9 +134,11 @@ export const transactions = pgTable(
     type: text("type").notNull(), // shield | transfer | split | merge | withdraw | aggregation
     aggregationId: bigint("aggregation_id", { mode: "bigint" }),
     height: integer("height"),
+    // Multi-asset: SIP-10 asset uid for this operation; NULL = native STX.
+    assetId: integer("asset_id"),
     createdAt: now(),
   },
-  (t) => [index("transactions_type_idx").on(t.type)],
+  (t) => [index("transactions_type_idx").on(t.type), index("transactions_asset_idx").on(t.assetId)],
 );
 
 /** Running total of protocol fees (single row, id = "global"). */

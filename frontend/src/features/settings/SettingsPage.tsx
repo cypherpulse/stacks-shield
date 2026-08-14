@@ -52,7 +52,7 @@ export function Settings() {
             <QrCode className="size-4" />
           </span>
           <div>
-            <p className="text-sm font-medium">Your STX Shield address</p>
+            <p className="text-sm font-medium">Your Stacks Shield address</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Share this to receive private transfers. It's a set of public keys, so it reveals no
               balance, no history, and not your wallet address.

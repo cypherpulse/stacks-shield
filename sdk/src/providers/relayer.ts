@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- relayer provider (with failover)
+// @stacks-shield/sdk -- relayer provider (with failover)
 // =============================================================================
 // Submits operations so they land on chain from the relayer's address -- the
 // user never appears. Tries relayers in order until one accepts, so a single

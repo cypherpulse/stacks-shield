@@ -41,7 +41,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@stacks/connect": "^8.2.6",
-    "@stx-shield/sdk": "workspace:*",
+    "@stacks-shield/sdk": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-router": "^1.170.18",
     "class-variance-authority": "^0.7.1",

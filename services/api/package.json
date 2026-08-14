@@ -13,6 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:migrate:status": "tsx --env-file-if-exists=.env scripts/migrate-status.ts",
+    "db:migrate:sip10": "tsx --env-file-if-exists=.env scripts/migrate-sip10.ts",
     "indexer": "tsx src/indexers/runner.ts",
     "test": "vitest run"
   },

@@ -58,6 +58,13 @@ const base = {
   /** Opaque encrypted note payload for the receiver, echoed on chain in the
    *  operation's metadata field. The relayer cannot read it. */
   encryptedPayload: z.string().optional(),
+  /** SIP-10 asset selector. ABSENT => native STX (privacy-pool /
+   *  split-merge-manager). PRESENT => a SIP-10 token contract principal; the
+   *  operation targets sip10-pool for that asset and is verified by
+   *  sip10-zk-verifier. The token is bound into the proof (asset_id), so the
+   *  relayer cannot swap it — a wrong token yields a different statement leaf
+   *  and the transaction reverts, exactly like every other parameter. */
+  token: Principal.optional(),
 };
 
 export const TransferRequestSchema = z.object({
@@ -73,7 +80,9 @@ export const TransferRequestSchema = z.object({
 export const WithdrawRequestSchema = z.object({
   ...base,
   nullifier: Bytes32,
-  amount: z.string().regex(/^\d+$/, "micro-STX as a decimal string"),
+  // base units as a decimal string: micro-STX for native, or the SIP-10 token's
+  // smallest unit when `token` is present.
+  amount: z.string().regex(/^\d+$/, "amount as a decimal string of base units"),
   recipient: Principal,
   root: Bytes32,
 });
@@ -107,6 +116,10 @@ export const MergeRequestSchema = z.object({
  *  relayer your funds, and the deposit is public regardless. */
 export const OPERATIONS = ["transfer", "withdraw", "split", "merge"] as const;
 export type Operation = (typeof OPERATIONS)[number];
+
+/** True when a request targets a SIP-10 asset (routes to sip10-pool /
+ *  sip10-zk-verifier) rather than native STX. */
+export const isSip10 = (r: { token?: string }): boolean => Boolean(r.token);
 
 export type TransferRequest = z.infer<typeof TransferRequestSchema>;
 export type WithdrawRequest = z.infer<typeof WithdrawRequestSchema>;
@@ -153,7 +166,11 @@ export interface RelayerInfo {
   relayFeeMicroStx: string;
   minRelayFeeMicroStx: string;
   accepting: boolean;
-  contracts: { pool: string; splitMerge: string; verifier: string };
+  contracts: {
+    pool: string; splitMerge: string; verifier: string;
+    /** SIP-10 asset pool + its verifier (single pool hosts all SIP-10 ops). */
+    sip10Pool: string; sip10Verifier: string;
+  };
 }
 
 export class RelayError extends Error {

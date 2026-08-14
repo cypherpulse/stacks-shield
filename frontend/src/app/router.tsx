@@ -81,7 +81,7 @@ function ErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
 
   const title = staleChunk ? "A newer version is ready" : "This page didn't load";
   const message = staleChunk
-    ? "STX Shield was updated since you opened this tab. Reloading gets you the latest version."
+    ? "Stacks Shield was updated since you opened this tab. Reloading gets you the latest version."
     : (error?.message || "Something went wrong while loading this page.");
 
   return (

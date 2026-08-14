@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- bb.js proof engine (Node + browser)
+// @stacks-shield/sdk -- bb.js proof engine (Node + browser)
 // =============================================================================
 // The validated prover. Uses @noir-lang/noir_js to build witnesses and
 // @aztec/bb.js UltraHonkBackend { verifierTarget: "evm" } to prove — the exact
@@ -22,7 +22,9 @@ import type {
   NoteWitness, MembershipWitness,
 } from "./engine.js";
 
-export type CircuitName = "shield" | "transfer" | "split" | "merge" | "withdraw" | "keygen";
+export type NativeCircuit = "shield" | "transfer" | "split" | "merge" | "withdraw";
+export type Sip10Circuit = "sip10-shield" | "sip10-transfer" | "sip10-split" | "sip10-merge" | "sip10-withdraw";
+export type CircuitName = NativeCircuit | Sip10Circuit | "keygen";
 
 /** A compiled Noir circuit (the `target/<name>.json` produced by nargo). */
 export interface CompiledCircuit {
@@ -43,6 +45,36 @@ const noteInput = (n: NoteWitness) => ({
 });
 const idx = (m: MembershipWitness) => m.indexBits;
 const sib = (m: MembershipWitness) => m.siblings.map(f);
+
+// ---- circuit selection + input building (pure; asset-aware) ----------------
+// A witness with `assetField` set proves against the SIP-10 circuit family and
+// binds asset_id as a public input (canonically just before circuit_version, as
+// the circuits declare it). Otherwise it uses the native STX circuits, unchanged.
+// Noir maps inputs by NAME, so the extra key is inert for the native path.
+const pick = (base: NativeCircuit, assetField?: bigint): CircuitName =>
+  assetField ? (`sip10-${base}` as Sip10Circuit) : base;
+const assetIn = (assetField?: bigint) => (assetField ? { asset_id: f(assetField) } : {});
+
+export const shieldInputs = (w: ShieldWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
+  circuit: pick("shield", w.assetField),
+  inputs: { op: "1", commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), amount: f(w.note.amount), ...assetIn(w.assetField), circuit_version: "1", note: noteInput(w.note) },
+});
+export const transferInputs = (w: TransferWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
+  circuit: pick("transfer", w.assetField),
+  inputs: { op: "2", nullifier: f(w.nullifier), new_commitment: f(w.newCommitment), new_owner_commitment: f(w.newOwnerCommitment), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), output: noteInput(w.output) },
+});
+export const splitInputs = (w: SplitWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
+  circuit: pick("split", w.assetField),
+  inputs: { op: "4", nullifier: f(w.nullifier), commitment_1: f(w.commitment1), owner_commitment_1: f(w.ownerCommitment1), commitment_2: f(w.commitment2), owner_commitment_2: f(w.ownerCommitment2), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), out_1: noteInput(w.out1), out_2: noteInput(w.out2) },
+});
+export const mergeInputs = (w: MergeWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
+  circuit: pick("merge", w.assetField),
+  inputs: { op: "5", nullifier_1: f(w.nullifier1), nullifier_2: f(w.nullifier2), commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), merkle_root: f(w.membership1.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk_1: f(w.ownerSk1), merkle_index_1: idx(w.membership1), merkle_siblings_1: sib(w.membership1), owner_sk_2: f(w.ownerSk2), merkle_index_2: idx(w.membership2), merkle_siblings_2: sib(w.membership2), input_1: noteInput(w.input1), input_2: noteInput(w.input2), output: noteInput(w.output) },
+});
+export const withdrawInputs = (w: WithdrawWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
+  circuit: pick("withdraw", w.assetField),
+  inputs: { op: "3", nullifier: f(w.nullifier), amount: f(w.amount), recipient_hash: f(w.recipientHash), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input) },
+});
 
 export const createBbjsEngine = (opts: BbjsEngineOptions): ProofEngine => {
   const threads = opts.threads ?? 4;
@@ -122,46 +154,24 @@ export const createBbjsEngine = (opts: BbjsEngineOptions): ProofEngine => {
     },
 
     proveShield(w: ShieldWitness): Promise<RawProof> {
-      return proveCircuit("shield", {
-        op: "1", commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment),
-        amount: f(w.note.amount), circuit_version: "1", note: noteInput(w.note),
-      });
+      const { circuit, inputs } = shieldInputs(w);
+      return proveCircuit(circuit, inputs);
     },
-
     proveTransfer(w: TransferWitness): Promise<RawProof> {
-      return proveCircuit("transfer", {
-        op: "2", nullifier: f(w.nullifier), new_commitment: f(w.newCommitment),
-        new_owner_commitment: f(w.newOwnerCommitment), merkle_root: f(w.membership.merkleRoot), circuit_version: "1",
-        owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership),
-        input: noteInput(w.input), output: noteInput(w.output),
-      });
+      const { circuit, inputs } = transferInputs(w);
+      return proveCircuit(circuit, inputs);
     },
-
     proveSplit(w: SplitWitness): Promise<RawProof> {
-      return proveCircuit("split", {
-        op: "4", nullifier: f(w.nullifier), commitment_1: f(w.commitment1), owner_commitment_1: f(w.ownerCommitment1),
-        commitment_2: f(w.commitment2), owner_commitment_2: f(w.ownerCommitment2), merkle_root: f(w.membership.merkleRoot),
-        circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership),
-        input: noteInput(w.input), out_1: noteInput(w.out1), out_2: noteInput(w.out2),
-      });
+      const { circuit, inputs } = splitInputs(w);
+      return proveCircuit(circuit, inputs);
     },
-
     proveMerge(w: MergeWitness): Promise<RawProof> {
-      return proveCircuit("merge", {
-        op: "5", nullifier_1: f(w.nullifier1), nullifier_2: f(w.nullifier2), commitment: f(w.commitment),
-        owner_commitment: f(w.ownerCommitment), merkle_root: f(w.membership1.merkleRoot), circuit_version: "1",
-        owner_sk_1: f(w.ownerSk1), merkle_index_1: idx(w.membership1), merkle_siblings_1: sib(w.membership1),
-        owner_sk_2: f(w.ownerSk2), merkle_index_2: idx(w.membership2), merkle_siblings_2: sib(w.membership2),
-        input_1: noteInput(w.input1), input_2: noteInput(w.input2), output: noteInput(w.output),
-      });
+      const { circuit, inputs } = mergeInputs(w);
+      return proveCircuit(circuit, inputs);
     },
-
     proveWithdraw(w: WithdrawWitness): Promise<RawProof> {
-      return proveCircuit("withdraw", {
-        op: "3", nullifier: f(w.nullifier), amount: f(w.amount), recipient_hash: f(w.recipientHash),
-        merkle_root: f(w.membership.merkleRoot), circuit_version: "1", owner_sk: f(w.ownerSk),
-        merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input),
-      });
+      const { circuit, inputs } = withdrawInputs(w);
+      return proveCircuit(circuit, inputs);
     },
   };
 };

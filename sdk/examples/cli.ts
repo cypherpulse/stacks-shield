@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- Node CLI test harness
+// @stacks-shield/sdk -- Node CLI test harness
 // =============================================================================
 // A key-based CLI to exercise the full private lifecycle (shield, split, merge,
 // withdraw, transfer) against testnet, and to LIST/VERIFY your notes directly
@@ -49,8 +49,8 @@ import {
   type Network,
   type ShieldNote,
   type WalletSigner,
-} from "@stx-shield/sdk";
-import { createNodeEngine } from "@stx-shield/sdk/node";
+} from "@stacks-shield/sdk";
+import { createNodeEngine } from "@stacks-shield/sdk/node";
 
 // ---- config (env with sensible testnet defaults) ---------------------------
 

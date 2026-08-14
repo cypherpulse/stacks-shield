@@ -83,6 +83,8 @@ export class RelayerService {
         pool: `${this.cfg.deployer}.privacy-pool`,
         splitMerge: `${this.cfg.deployer}.split-merge-manager`,
         verifier: `${this.cfg.deployer}.zk-verifier`,
+        sip10Pool: `${this.cfg.deployer}.sip10-pool`,
+        sip10Verifier: `${this.cfg.deployer}.sip10-zk-verifier`,
       },
     };
   }

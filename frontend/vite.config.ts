@@ -20,12 +20,12 @@ export default defineConfig({
   },
   server: {
     headers: crossOriginIsolation,
-    // The @stx-shield/sdk workspace package is symlinked from ../sdk (outside the
+    // The @stacks-shield/sdk workspace package is symlinked from ../sdk (outside the
     // frontend root); allow Vite's dev server to serve files from the repo root.
     fs: { allow: [".."] },
   },
   preview: { headers: crossOriginIsolation },
   // Pre-bundle the linked SDK so the dev server resolves it like any dependency.
-  optimizeDeps: { include: ["@stx-shield/sdk", "@stx-shield/sdk/web"] },
+  optimizeDeps: { include: ["@stacks-shield/sdk", "@stacks-shield/sdk/web"] },
   build: { target: "es2022", sourcemap: false },
 });

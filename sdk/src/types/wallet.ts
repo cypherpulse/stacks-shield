@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- wallet signer abstraction
+// @stacks-shield/sdk -- wallet signer abstraction
 // =============================================================================
 // Wallet-agnostic. In the browser this is backed by @stacks/connect (Leather,
 // Xverse, Asigna, ...); in Node by a key-based signer. The SDK never sees or

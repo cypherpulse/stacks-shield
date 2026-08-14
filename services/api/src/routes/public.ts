@@ -13,6 +13,7 @@ import { cvToJSON, hexToCV } from "@stacks/transactions";
 import { config } from "../config.js";
 import { callReadOnly } from "../utils/hiro.js";
 import * as q from "../services/queries.js";
+import { getAssets } from "../services/assets.js";
 
 const pagination = (query: unknown) => {
   const qq = (query ?? {}) as { limit?: string; offset?: string };
@@ -20,7 +21,18 @@ const pagination = (query: unknown) => {
 };
 
 export const registerPublicRoutes = (app: FastifyInstance): void => {
-  app.get("/stats", async () => q.getStats());
+  // Aggregate protocol stats, plus a per-asset breakdown (shielded + fees for
+  // STX / sBTC / USDCx …). The top-level `shielded`/`fees` stay STX for
+  // backward compatibility; `byAsset` carries every asset in its own units.
+  app.get("/stats", async () => {
+    const [base, byAsset] = await Promise.all([q.getStats(), q.getAssetStats()]);
+    return { ...base, byAsset };
+  });
+
+  // Unified multi-asset registry: native STX + every registered SIP-10 asset,
+  // each tagged with the pool/verifier it routes to. Single source of truth for
+  // clients so they never hardcode a pool. Sourced from the on-chain registry.
+  app.get("/assets", async () => ({ results: await getAssets() }));
 
   app.get("/notes/encrypted", async (req) => {
     const { limit, offset } = pagination(req.query);

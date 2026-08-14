@@ -1,5 +1,5 @@
 // =============================================================================
-// @stx-shield/sdk -- zkVerify submitter
+// @stacks-shield/sdk -- zkVerify submitter
 // =============================================================================
 // Submits a RawProof to zkVerify V3_0 (UltraHonk, ZK variant) and returns the
 // aggregation inclusion the contracts re-check. zkverifyjs is imported lazily so

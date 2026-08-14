@@ -50,6 +50,11 @@ export interface NotePayload {
   commitment: Bytes32;
   /** Leaf index in the commitment tree, for Merkle proofs. */
   treePosition: number;
+  /** SIP-10 asset uid this note belongs to. Absent/0 = native STX. Carried in
+   *  the payload so a discovered note can rebuild its ASSET-BOUND commitment and
+   *  nullifier. Additive within v1: legacy STX payloads omit it and decode as
+   *  native, so existing notes stay fully readable. */
+  assetId?: number;
 }
 
 /** A viewing keypair. X25519 — used ONLY for note discovery, never for spending. */
@@ -96,6 +101,8 @@ const serialize = (p: NotePayload): Bytes =>
       n: p.nonce.toString(),
       c: b2h(p.commitment),
       t: p.treePosition,
+      // Only emit for SIP-10, so native STX payloads are byte-identical to v1.
+      ...(p.assetId ? { i: p.assetId } : {}),
     }),
   );
 
@@ -109,6 +116,8 @@ const deserialize = (bytes: Bytes): NotePayload => {
     nonce: BigInt(o["n"] as string),
     commitment: h2b(o["c"] as string),
     treePosition: Number(o["t"]),
+    // Legacy STX payloads omit "i" -> undefined (native).
+    assetId: o["i"] != null ? Number(o["i"]) : undefined,
   };
 };
 

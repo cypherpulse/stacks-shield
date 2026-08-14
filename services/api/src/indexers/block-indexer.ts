@@ -13,7 +13,7 @@ import { config } from "../config.js";
 import { getTipHeight, getContractEvents } from "../utils/hiro.js";
 import { logger } from "../utils/logger.js";
 import { decodeEvent, asInt } from "./decode.js";
-import { handleNoteEvent } from "./note-indexer.js";
+import { handleNoteEvent, handleCommitmentEvent } from "./note-indexer.js";
 import { handleAggregationEvent } from "./aggregation-indexer.js";
 import { handleRootFromEvent } from "./root-indexer.js";
 import { refreshStats } from "./stats-indexer.js";
@@ -23,7 +23,18 @@ const PAGE = 50;
 const MAX_PAGES = 40; // safety bound per contract per scan
 const OVERLAP = 3; // re-scan a few blocks for ordering/reorg safety
 
-const CONTRACTS = () => [config.contracts.privacyPool, config.contracts.splitMerge, config.contracts.zkVerifier];
+// Native + SIP-10 pools, both verifiers, and the SHARED registry (its
+// commitment-registered event is the source of truth for the single Merkle
+// tree, incl. SIP-10 split outputs). All emit the same event shapes, so the
+// same handlers process them regardless of asset.
+const CONTRACTS = () => [
+  config.contracts.privacyPool,
+  config.contracts.splitMerge,
+  config.contracts.zkVerifier,
+  config.contracts.sip10Pool,
+  config.contracts.sip10ZkVerifier,
+  config.contracts.privacyRegistry,
+];
 
 const getCursor = async (): Promise<number> => {
   const [row] = await db.select().from(indexerCursors).where(eq(indexerCursors.id, CURSOR_ID));
@@ -41,7 +52,12 @@ const dispatch = async (valueHex: string, txid: string): Promise<number | null> 
   const decoded = decodeEvent(valueHex);
   if (!decoded) return null;
   await handleRootFromEvent(decoded, txid);
-  if (!(await handleNoteEvent(decoded, txid))) {
+  // Try, in order: note (native + SIP-10), shared-registry commitment (tree
+  // source), then aggregation. Each returns false when it is not its event.
+  if (
+    !(await handleNoteEvent(decoded, txid)) &&
+    !(await handleCommitmentEvent(decoded, txid))
+  ) {
     await handleAggregationEvent(decoded, txid);
   }
   return asInt(decoded.fields["height"]);
