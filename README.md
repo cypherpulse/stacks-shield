@@ -7,7 +7,7 @@ pool, **transfer / split / merge** value privately between opaque notes, and
 and recipient identities hidden by zero-knowledge proofs (Noir + UltraHonk),
 verified through [zkVerify](https://zkverify.io).
 
-📚 Full documentation: [`docs/`](docs/README.md) · Deep-dive: [`StacksShield.md`](StacksShield.md).
+📚 Full documentation: [`docs/`](docs/README.md) · Whitepaper: [`docs/whitepaper.md`](docs/whitepaper.md).
 
 > **Status: live on Stacks Testnet.** The complete lifecycle — shield → transfer
 > → split → merge → withdraw — runs end-to-end for **STX, USDCx and sBTC** with
@@ -112,9 +112,10 @@ transparent funds into the pool.)*
 **Verification is delegated to zkVerify (v1).** Clarity cannot yet verify an
 UltraHonk proof natively (no BN254/BLS pairing primitives), so the contracts
 trust zkVerify's verification and check cheap **aggregation inclusion** on chain.
-This is an explicit, documented dependency. Removing it — self-hosting the
-aggregation layer, then native on-chain verification — is laid out in
-[`StacksShield.md`](StacksShield.md#10-removing-the-third-party-dependency-zkverify).
+This is an explicit, documented dependency, and moving verification onto Stacks
+itself is the primary direction of future work — the path from a self-hosted
+verifier to fully native on-chain verification is in the
+[whitepaper](docs/whitepaper.md#9-toward-native-zk-verification-on-stacks).
 
 ---
 
@@ -294,7 +295,6 @@ scripts/
   testnet/          real-proof op runner + SDK e2e suite (STX / USDCx / sBTC)
 deployments/        devnet / testnet / mainnet plans + testnet records
 docs/               documentation (start at docs/README.md)
-StacksShield.md     full system deep-dive (design rationale, what worked/didn't, roadmap)
 ```
 
 ---
