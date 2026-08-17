@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start":"node dist/index.js",
+    "start": "node dist/index.js",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -86,5 +86,6 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^8.1.5",
     "vite-tsconfig-paths": "^6.0.2"
-  }
+  },
+  "license": "Apache-2.0"
 }

@@ -85,8 +85,8 @@ export function TermsPage() {
 
       <h2>9. Open source</h2>
       <p>
-        The Protocol is open source and licensed under the MIT License. The software is provided under
-        the terms of that license; these Terms govern your use of the reference Service.
+        The Protocol is open source and licensed under the Apache License 2.0. The software is
+        provided under the terms of that license; these Terms govern your use of the reference Service.
       </p>
 
       <h2>10. Changes</h2>

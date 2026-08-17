@@ -33,7 +33,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "packageManager": "pnpm@10.26.1",
   "devDependencies": {
     "@aztec/bb.js": "3.0.0-nightly.20260102",

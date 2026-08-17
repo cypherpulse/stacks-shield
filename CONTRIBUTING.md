@@ -82,4 +82,4 @@ See [architecture](docs/architecture.md) for the map. Quick reference:
 ## License
 
 By contributing you agree your contributions are licensed under the repository's
-[MIT License](LICENSE).
+[Apache-2.0 License](LICENSE).

@@ -353,4 +353,4 @@ For a public audience this must be stated plainly (full treatment in the
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
