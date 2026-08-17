@@ -179,7 +179,7 @@ function makeClient(): STXShield {
 async function cmdAddress(shield: STXShield): Promise<void> {
   const stxAddr = await makeSigner(PK!).getAddress(NETWORK);
   console.log("Stacks address:      ", stxAddr);
-  console.log("STX Shield address:  ", await shield.getAddress());
+  console.log("Stacks Shield address:  ", await shield.getAddress());
 }
 
 async function cmdShield(shield: STXShield, stx: number): Promise<void> {

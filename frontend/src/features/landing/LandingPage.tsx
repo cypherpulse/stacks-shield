@@ -46,7 +46,7 @@ const primitives = [
   {
     icon: ShieldCheck,
     title: "Shield",
-    body: "Move transparent STX into a private note in a single signature.",
+    body: "Move transparent STX, sBTC or USDCx into a private note in a single signature.",
     accent: "primary" as const,
     span: true,
   },
@@ -85,7 +85,7 @@ const steps = [
   {
     icon: ShieldCheck,
     title: "Shield",
-    body: "Deposit STX and receive a private note only you can see.",
+    body: "Deposit STX, sBTC or USDCx and receive a private note only you can see.",
   },
   {
     icon: Layers,
@@ -123,15 +123,15 @@ const faqs = [
   },
   {
     q: "Are there fees?",
-    a: "A small protocol fee of about 0.3% is taken on withdrawals. Shielding only costs the standard Stacks network fee.",
+    a: "A small, private protocol fee is taken on shield (~0.25%) and withdrawal (~0.30%), in the asset you're moving. Transfers, splits and merges are free — you only pay the standard Stacks network fee.",
   },
   {
     q: "Do I need to understand zero-knowledge proofs?",
     a: "No. Everything needed to keep your notes private is generated for you, in your browser, every time you act on a note. There is nothing technical to set up or manage.",
   },
   {
-    q: "Is it safe to use real STX?",
-    a: "Not yet. Stacks Shield runs on public Stacks Testnet. Use testnet STX only. A mainnet release comes later.",
+    q: "Is it safe to use real funds?",
+    a: "Not yet. Stacks Shield runs on public Stacks Testnet. Use testnet assets only (STX, sBTC, USDCx). A mainnet release comes later.",
   },
 ];
 
@@ -223,12 +223,13 @@ export function Landing() {
             </a>
 
             <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-tight sm:text-6xl">
-              Send STX <span className="text-gradient">privately</span> on Stacks
+              Encrypted zero-knowledge for <span className="text-gradient">private</span>{" "}
+              peer-to-peer payments on Stacks
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              Deposit STX and get a private note only you can see. Send, split, merge, and withdraw
-              it with the amount and the owner hidden on-chain. Zero-knowledge proofs keep every
-              move private and verifiable. You use it like a wallet.
+              Deposit STX, sBTC, USDCx or any SIP-010 token and get a private note only you can see.
+              Send, split, merge, and withdraw it with the amount and the owner hidden on-chain.
+              Zero-knowledge proofs keep every move private and verifiable. You use it like a wallet.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -271,10 +272,10 @@ export function Landing() {
                   </Badge>
                 </div>
                 <p className="mt-4 font-display text-4xl font-semibold tracking-tight">
-                  •••• <span className="text-lg text-muted-foreground">STX</span>
+                  •••• <span className="text-lg text-muted-foreground">•••</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Amount decrypted only on your device
+                  Amount and asset decrypted only on your device
                 </p>
 
                 <div className="mt-6 space-y-2.5">
@@ -325,7 +326,7 @@ export function Landing() {
       <Section id="features">
         <SectionTitle
           eyebrow="What you can do"
-          title="Five ways to move private STX"
+          title="Five ways to move private assets"
           body="Each one runs in your browser and settles on-chain. The cryptography is handled for you."
         />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -429,8 +430,8 @@ export function Landing() {
             Make your first private transaction
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm text-primary-foreground/80 sm:text-base">
-            Connect a Stacks wallet, request some testnet STX, and shield it. The whole flow takes a
-            couple of minutes.
+            Connect a Stacks wallet, claim some testnet STX, sBTC or USDCx, and shield it. The whole
+            flow takes a couple of minutes.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" variant="secondary">
@@ -472,7 +473,7 @@ export function Landing() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Logo />
           <p className="text-xs text-muted-foreground">
-            Stacks Shield · Public Stacks Testnet · Use testnet STX only
+            Stacks Shield · Public Stacks Testnet · Use testnet assets only
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
             <a href={LINKS.docs} target="_blank" rel="noreferrer" className="hover:text-foreground">
@@ -488,6 +489,12 @@ export function Landing() {
             </a>
             <Link to="/dashboard" className="hover:text-foreground">
               App
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
             </Link>
           </div>
         </div>

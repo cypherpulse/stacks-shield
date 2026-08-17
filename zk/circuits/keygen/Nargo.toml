@@ -1,6 +1,6 @@
 [package]
 name = "keygen"
 type = "bin"
-authors = ["STX Shield"]
+authors = ["Stacks Shield"]
 
 [dependencies]

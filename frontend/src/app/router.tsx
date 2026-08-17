@@ -190,8 +190,22 @@ const guideRoute = createRoute({
   component: lazyRouteComponent(() => import("@/features/guide/GuidePage"), "GuidePage"),
 });
 
+// Standalone legal pages (no wallet / app shell required).
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: lazyRouteComponent(() => import("@/features/legal/TermsPage"), "TermsPage"),
+});
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: lazyRouteComponent(() => import("@/features/legal/PrivacyPage"), "PrivacyPage"),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  termsRoute,
+  privacyRoute,
   appLayoutRoute.addChildren([
     dashboardRoute,
     shieldRoute,

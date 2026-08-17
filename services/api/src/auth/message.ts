@@ -13,7 +13,7 @@ export const generateNonce = (): string => randomBytes(32).toString("hex");
  */
 export const buildAuthMessage = (wallet: string, nonce: string, dateISO: string): string =>
   [
-    "Sign this message to authenticate with STX Shield.",
+    "Sign this message to authenticate with Stacks Shield.",
     "",
     "Wallet:",
     wallet,

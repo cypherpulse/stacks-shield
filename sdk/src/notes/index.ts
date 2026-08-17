@@ -33,9 +33,9 @@ export const encodeAddress = (a: ShieldAddress): string =>
   "stxsh1" + toHex32(a.ownerPkX).slice(2) + toHex32(a.ownerPkY).slice(2) + hex(a.viewingPk);
 
 export const decodeAddress = (s: string): ShieldAddress => {
-  if (!s.startsWith("stxsh1")) throw new InvalidNoteError("not an STX Shield address");
+  if (!s.startsWith("stxsh1")) throw new InvalidNoteError("not a Stacks Shield address");
   const body = s.slice(6);
-  if (body.length !== 64 + 64 + 64) throw new InvalidNoteError("malformed STX Shield address");
+  if (body.length !== 64 + 64 + 64) throw new InvalidNoteError("malformed Stacks Shield address");
   return {
     ownerPkX: BigInt("0x" + body.slice(0, 64)),
     ownerPkY: BigInt("0x" + body.slice(64, 128)),

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "STX Shield relayer (Phase 10). A trustless liveness component: publishes zkVerify roots and submits user operations. Never verifies proofs, holds secrets, owns notes, or censors.",
+  "description": "Stacks Shield relayer (Phase 10). A trustless liveness component: publishes zkVerify roots and submits user operations. Never verifies proofs, holds secrets, owns notes, or censors.",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env.relayer index.ts",

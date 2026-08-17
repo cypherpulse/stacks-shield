@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "STX Shield public read-only API + indexers (Phase 9). Never holds keys, never proves, never signs.",
+  "description": "Stacks Shield public read-only API + indexers (Phase 9). Never holds keys, never proves, never signs.",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",

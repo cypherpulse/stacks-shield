@@ -44,7 +44,7 @@ await shield.withdraw(note);
 
 ## 3. Authentication
 
-STX Shield is Web3-native: **no email, passwords or OAuth.** A wallet signature
+Stacks Shield is Web3-native: **no email, passwords or OAuth.** A wallet signature
 is the only credential. Provide a `signer` (in the browser this wraps
 `@stacks/connect` — Leather, Xverse, Asigna; in Node a key-based signer) and the
 SDK handles the nonce → sign → JWT flow for you:

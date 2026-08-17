@@ -18,7 +18,9 @@ export const WITHDRAW_FEE_RATE = 0.003; // ~0.3% protocol withdraw fee
 // casual use, not abuse — front a server proxy if the faucet must be protected.
 export const FAUCET_URL =
   import.meta.env.VITE_FAUCET_URL ?? "https://hermes-faucet-backend.onrender.com/api/claim-stx";
-export const FAUCET_API_KEY = import.meta.env.VITE_FAUCET_API_KEY ?? "hermes_faucet_secret_2026";
+// Provided only via env (VITE_FAUCET_API_KEY) — never hardcode a key in source.
+// Set it in frontend/.env.local (gitignored); see .env.local.example.
+export const FAUCET_API_KEY = import.meta.env.VITE_FAUCET_API_KEY ?? "";
 export const FAUCET_AMOUNT_STX = 100;
 
 // The faucet dispenses STX + SIP-10 tokens from the Hermes backend. Derive the

@@ -116,7 +116,7 @@ export const recommendations = (result: SuiteResult): string[] => {
   const perf = performance(result);
   const shield = perf.find((p) => p.stage === "shield");
   if (shield && shield.maxMs > 300_000) recs.push("zkVerify aggregation latency is high (>5 min on some runs); consider a dedicated aggregation domain with a small aggregation size for faster publication.");
-  if (issues(result).length === 0) recs.push("All checks passed — STX Shield v1 is validated end-to-end on testnet; proceed to release tagging.");
+  if (issues(result).length === 0) recs.push("All checks passed — Stacks Shield v1 is validated end-to-end on testnet; proceed to release tagging.");
   else recs.push("Resolve the discovered issues above (validation-blocking only) and re-run the suite.");
   return recs;
 };
