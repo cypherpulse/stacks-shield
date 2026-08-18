@@ -1,5 +1,9 @@
 # Stacks Shield
 
+[![npm](https://img.shields.io/npm/v/@stacks-shield/sdk/beta?label=%40stacks-shield%2Fsdk)](https://www.npmjs.com/package/@stacks-shield/sdk)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![status](https://img.shields.io/badge/status-testnet%20beta-orange.svg)](#)
+
 Privacy-preserving transfers on Stacks — for native **STX** and **SIP-10 tokens
 (sBTC, USDCx)**. Stacks Shield lets users **shield** an asset into a private
 pool, **transfer / split / merge** value privately between opaque notes, and

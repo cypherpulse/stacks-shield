@@ -1,8 +1,16 @@
 # @stacks-shield/sdk
 
-**Privacy for STX, in minutes.** Shield, transfer, split, merge and withdraw STX
-with zero-knowledge proofs — without ever touching Noir, UltraHonk, zkVerify,
-Merkle trees, nullifiers, commitments or relayers.
+[![npm](https://img.shields.io/npm/v/@stacks-shield/sdk/beta)](https://www.npmjs.com/package/@stacks-shield/sdk)
+[![install size](https://img.shields.io/bundlephobia/minzip/@stacks-shield/sdk)](https://bundlephobia.com/package/@stacks-shield/sdk)
+[![License](https://img.shields.io/npm/l/@stacks-shield/sdk)](https://github.com/cypherpulse/stacks-shield/blob/main/LICENSE)
+
+**Privacy for STX and SIP-10 tokens, in minutes.** Shield, transfer, split, merge
+and withdraw STX, sBTC, USDCx and other SIP-10 tokens with zero-knowledge
+proofs — without ever touching Noir, UltraHonk, zkVerify, Merkle trees,
+nullifiers, commitments or relayers.
+
+> **Beta / testnet.** This is a pre-release for Stacks Testnet and is **not
+> audited**. Do not use it with assets of real value.
 
 ```ts
 import { STXShield } from "@stacks-shield/sdk";
@@ -10,10 +18,11 @@ import { STXShield } from "@stacks-shield/sdk";
 const shield = new STXShield({ network: "testnet", signer });
 
 await shield.shield(100);                 // 100 STX -> private note
+await shield.shield(1000, "USDCx");       // SIP-10 token by symbol
 await shield.transfer(50, bobAddress);    // send privately
 const [a, b] = (await shield.split(note, [25, 25])).notes;
 const merged = (await shield.merge([a, b])).note;
-await shield.withdraw(merged);            // back to transparent STX
+await shield.withdraw(merged);            // back to transparent tokens
 ```
 
 ---

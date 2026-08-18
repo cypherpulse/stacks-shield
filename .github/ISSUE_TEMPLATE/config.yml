@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/stacks-shield/stacks-shield/security/advisories/new
+    url: https://github.com/cypherpulse/stacks-shield/security/advisories/new
     about: Report security issues privately — never in a public issue. See SECURITY.md.
   - name: Questions & discussion
-    url: https://github.com/stacks-shield/stacks-shield/discussions
+    url: https://github.com/cypherpulse/stacks-shield/discussions
     about: Ask questions and discuss ideas here.

@@ -1,0 +1,36 @@
+name: Release
+
+# Cuts a GitHub Release whenever a version tag (v*) is pushed.
+# Tags with a pre-release identifier (e.g. v1.0.0-testnet.1) are marked as a
+# pre-release automatically.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # required to create the release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            Stacks Shield ${{ github.ref_name }} — see the
+            [CHANGELOG](https://github.com/cypherpulse/stacks-shield/blob/main/CHANGELOG.md)
+            for the full list of changes.
+
+            > ⚠️ **Testnet only and not yet audited.** Do not use with assets of
+            > real value. See [SECURITY.md](https://github.com/cypherpulse/stacks-shield/blob/main/SECURITY.md).
