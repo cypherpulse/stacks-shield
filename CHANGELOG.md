@@ -6,6 +6,51 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] - 2026-09-03
+
+**v2 protocol relaunch on Stacks Testnet.** A fresh deployment with a hardened
+zero-knowledge proof system and multi-asset support, validated end-to-end on
+testnet. Testnet-only and **not independently audited** — an external audit is
+required before mainnet. New deployment address; see *Changed* for the migration.
+
+### Added
+- **Tree-transition binding (circuit version 2).** Every leaf-adding operation
+  (shield / transfer / split / merge) now binds the new Merkle root and the exact
+  insertion index into the proof, and each pool asserts the registry-assigned slot
+  matches the proof — so the resulting root is **proven, not merely asserted**.
+- **Fresh-deploy tooling** — a single `.env.v2.deploy` drives a full v2 deployment
+  under a new wallet; adds `new-wallet.ts`, `gen-relayers.ts`, `set-relayers.ts`
+  (M-of-N-ready relayer seating) and both-family verification-key generation.
+- **Docs** — testnet deployment runbook (`docs/v2-testnet-deployment.md`) and
+  per-release notes (`docs/releases/`).
+
+### Changed
+- Circuits and contracts move to `circuit_version = 2`; the pools and
+  `split-merge-manager` fold `new_root` + `leaf_index` into the public-inputs hash.
+- SDK proving adds the insertion witness and the v2 canonical public-input encoding
+  (native + SIP-10); the relayer threads the leaf index through relayed operations.
+- **Breaking — new deployment.** All clients now target the v2 deployer
+  `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`; the v1 deployer
+  `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH` is **superseded — do not use**.
+- **Breaking — circuit version 2.** v1 proofs are not compatible with v2; use a v2
+  client against the v2 deployment.
+
+### Fixed
+- STX `privacy-pool.withdraw` now excludes the fee contract as a recipient, matching
+  the SIP-10 pool.
+- Corrected `privacy-pool` comments that described the tree transition as proven when
+  it was not (now accurate under circuit version 2).
+
+### Security
+- Proof-soundness hardening: the tree transition is now bound in-circuit and
+  re-checked on-chain.
+- An **internal security review** of the on-chain core, circuits, and SDK
+  cryptography has been completed.
+- **Known, disclosed trust assumption:** on-chain publication of zkVerify
+  aggregation roots is currently a **trusted relayer role**; a threshold (M-of-N)
+  publisher scheme run by independent operators is planned to remove it. Root
+  publication is not yet trustless.
+
 ## [1.0.0-beta.1] - 2026-08-15
 
 First public release. Privacy-preserving transfers on Stacks Testnet for native
@@ -39,5 +84,6 @@ see [SECURITY.md](SECURITY.md) and the [whitepaper](docs/whitepaper.md#8-limitat
 - API stores only opaque encrypted note payloads — never amounts, secrets, or
   nullifier→commitment links.
 
-[Unreleased]: https://github.com/cypherpulse/stacks-shield/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/cypherpulse/stacks-shield/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/cypherpulse/stacks-shield/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/cypherpulse/stacks-shield/releases/tag/v1.0.0-beta.1
