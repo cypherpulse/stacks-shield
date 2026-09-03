@@ -241,33 +241,42 @@ class RecordingChain extends HappyChain {
 
 describe("SIP-10 routing", () => {
   it("routes each op to sip10-pool with the token trait prepended", () => {
-    const t = buildCall("transfer", { ...transferReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    const t = buildCall("transfer", { ...transferReq(), token: SIP10_TOKEN, leafIndex: 6 } as unknown as RelayRequest);
     expect(t.contract).toBe("sip10-pool");
     expect(t.fn).toBe("transfer");
-    expect(t.args).toHaveLength(11); // token + 6 op fields + 4 inclusion
+    expect(t.args).toHaveLength(12); // token + 6 op fields + leaf-index + 4 inclusion
 
     const w = buildCall("withdraw", { ...withdrawReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
     expect(w.contract).toBe("sip10-pool");
     expect(w.fn).toBe("withdraw");
-    expect(w.args).toHaveLength(9); // token + 4 + 4
+    expect(w.args).toHaveLength(9); // token + 4 + 4 (withdraw adds no leaf)
 
-    const s = buildCall("split", { ...splitReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    const s = buildCall("split", { ...splitReq(), token: SIP10_TOKEN, leafIndex: 6 } as unknown as RelayRequest);
     expect(s.contract).toBe("sip10-pool");
     expect(s.fn).toBe("split"); // sip10-pool hosts split (native uses split-merge-manager.split-note)
-    expect(s.args).toHaveLength(14); // token + 9 + 4
+    expect(s.args).toHaveLength(15); // token + 9 op fields + leaf-index + 4 inclusion
 
-    const m = buildCall("merge", { ...mergeReq(), token: SIP10_TOKEN } as unknown as RelayRequest);
+    const m = buildCall("merge", { ...mergeReq(), token: SIP10_TOKEN, leafIndex: 6 } as unknown as RelayRequest);
     expect(m.contract).toBe("sip10-pool");
     expect(m.fn).toBe("merge-notes");
-    expect(m.args).toHaveLength(12); // token + 7 + 4
+    expect(m.args).toHaveLength(13); // token + 7 op fields + leaf-index + 4 inclusion
   });
 
-  it("leaves native STX routing unchanged (backward compatible)", () => {
-    expect(buildCall("transfer", transferReq() as RelayRequest).contract).toBe("privacy-pool");
-    const s = buildCall("split", splitReq() as unknown as RelayRequest);
+  it("rejects a leaf-adding op that omits leafIndex (both families are v2)", () => {
+    expect(() => buildCall("transfer", { ...transferReq(), token: SIP10_TOKEN } as unknown as RelayRequest))
+      .toThrowError(/leafIndex/);
+    expect(() => buildCall("transfer", transferReq() as RelayRequest))
+      .toThrowError(/leafIndex/);
+  });
+
+  it("routes native STX ops to the STX contracts (v2, with leaf-index)", () => {
+    const t = buildCall("transfer", { ...transferReq(), leafIndex: 6 } as unknown as RelayRequest);
+    expect(t.contract).toBe("privacy-pool");
+    expect(t.args).toHaveLength(11); // 6 op fields + leaf-index + 4 inclusion (no token)
+    const s = buildCall("split", { ...splitReq(), leafIndex: 6 } as unknown as RelayRequest);
     expect(s.contract).toBe("split-merge-manager");
     expect(s.fn).toBe("split-note");
-    expect(s.args).toHaveLength(13); // no token prefix
+    expect(s.args).toHaveLength(14); // 9 op fields + leaf-index + 4 inclusion (no token)
   });
 
   it("validates a SIP-10 aggregation against sip10-zk-verifier; native against zk-verifier", async () => {

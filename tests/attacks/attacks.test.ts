@@ -116,25 +116,28 @@ describe("substitution attacks (proof binding)", () => {
   it("amount substitution: a proof verified for amount X cannot shield amount Y", () => {
     const p = setup();
     const note = p.mkNote(100 * ONE_STX);
+    const newRoot = p.nextRoot();
     const signedHash = shieldInputsHash({
       commitment: note.commitment,
       ownerCommitment: note.ownerCommitment,
       metadata: note.metadata,
       amount: 100 * ONE_STX, // signed amount
       currentRoot: p.currentRoot,
-      newRoot: p.nextRoot(),
+      newRoot,
+      leafIndex: 0,
     });
     const inc = p.proofArgs(1, signedHash);
     const r = simnet.callPublicFn(
       POOL,
       "shield",
       [
-        Cl.uint(5 * ONE_STX), // different amount submitted
+        Cl.uint(5 * ONE_STX), // different amount submitted -> hash mismatch
         Cl.buffer(note.commitment),
         Cl.buffer(note.ownerCommitment),
         Cl.buffer(note.metadata),
         Cl.buffer(p.currentRoot),
-        Cl.buffer(p.nextRoot()),
+        Cl.buffer(newRoot),
+        Cl.uint(0),
         ...inc,
       ],
       alice,
@@ -189,6 +192,7 @@ describe("root attacks", () => {
         Cl.buffer(out.metadata),
         Cl.buffer(genesis), // stale
         Cl.buffer(p.nextRoot()),
+        Cl.uint(0),
         ...p.proofArgs(2, bytes32(4242, 0x11)),
       ],
       alice,
@@ -239,6 +243,7 @@ describe("aggregation, inclusion & vkey attacks", () => {
         Cl.buffer(note.metadata),
         Cl.buffer(p.currentRoot),
         Cl.buffer(p.nextRoot()),
+        Cl.uint(0),
         ...inclusion,
       ] as never,
       alice,
@@ -331,10 +336,11 @@ describe("aggregation, inclusion & vkey attacks", () => {
 
   it("disabled verification key rejects proofs", () => {
     const p = setup();
+    // Disable the vkey at the LIVE circuit version (what the pool verifies against).
     simnet.callPublicFn(
       VERIFIER,
       "set-verification-key-status",
-      [Cl.uint(1), Cl.uint(1), Cl.bool(false)],
+      [Cl.uint(1), Cl.uint(p.liveCircuitVersion()), Cl.bool(false)],
       deployer,
     );
     const r = p.shield(alice, 10 * ONE_STX);

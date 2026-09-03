@@ -67,12 +67,31 @@ export interface ShieldWitness extends AssetBound {
   note: NoteWitness;
   commitment: bigint;
   ownerCommitment: bigint;
+  /** Append proof for the shielded commitment (SIP-10 circuit family). */
+  insertion: InsertionWitness;
 }
 export interface MembershipWitness {
   /** Boolean path (little-endian) + sibling hashes for the input note. */
   indexBits: boolean[];
   siblings: bigint[];
   merkleRoot: bigint;
+}
+/** Proves the append of a new commitment at the next free slot: the slot held
+ *  the empty leaf under `oldRoot`, and inserting the commitment (with the SAME
+ *  siblings) yields `newRoot`. The circuit binds this transition so a forged
+ *  new-root cannot verify; the pool asserts the registry assigns exactly
+ *  `leafIndex`. Only the SIP-10 circuit family consumes it. */
+export interface InsertionWitness {
+  /** Slot the commitment is appended at (= tree size before the append). */
+  leafIndex: number;
+  /** LE path bits for the insertion slot. */
+  indexBits: boolean[];
+  /** Sibling hashes for the insertion slot, bottom-up. */
+  siblings: bigint[];
+  /** Root with the slot still empty (equals the current tree root). */
+  oldRoot: bigint;
+  /** Root after inserting the commitment at `leafIndex`. */
+  newRoot: bigint;
 }
 export interface TransferWitness extends AssetBound {
   nullifier: bigint;
@@ -82,6 +101,8 @@ export interface TransferWitness extends AssetBound {
   ownerSk: bigint;
   output: NoteWitness;
   membership: MembershipWitness;
+  /** Append proof for the new output commitment (SIP-10 circuit family). */
+  insertion: InsertionWitness;
 }
 export interface SplitWitness extends AssetBound {
   nullifier: bigint;
@@ -94,6 +115,10 @@ export interface SplitWitness extends AssetBound {
   out1: NoteWitness;
   out2: NoteWitness;
   membership: MembershipWitness;
+  /** Append proofs for the two outputs: `insertion1` at leaf_index over the
+   *  membership root, `insertion2` at leaf_index+1 over the intermediate root. */
+  insertion1: InsertionWitness;
+  insertion2: InsertionWitness;
 }
 export interface MergeWitness extends AssetBound {
   nullifier1: bigint;
@@ -107,6 +132,8 @@ export interface MergeWitness extends AssetBound {
   ownerSk2: bigint;
   membership2: MembershipWitness;
   output: NoteWitness;
+  /** Append proof for the merged output commitment (SIP-10 circuit family). */
+  insertion: InsertionWitness;
 }
 export interface WithdrawWitness extends AssetBound {
   nullifier: bigint;

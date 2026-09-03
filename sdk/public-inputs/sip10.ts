@@ -32,11 +32,14 @@ const hash = (fields: Bytes32[]): Bytes32 => keccak256(concatAll(fields));
 /** asset_id field element derived from the token contract principal. */
 export const assetIdOf = (tokenPrincipal: string): Bytes32 => fePrincipal(tokenPrincipal);
 
-/** shield: op, commitment, owner_commitment, amount, asset_id, circuit_version */
+/** shield: op, commitment, owner_commitment, amount, old_root, new_root, leaf_index, asset_id, circuit_version */
 export const shieldPublicInputsSip10 = (o: {
   commitment: Bytes32;
   ownerCommitment: Bytes32;
   amount: bigint;
+  oldRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   token: string;
   circuitVersion: number;
 }): Bytes32 =>
@@ -45,16 +48,21 @@ export const shieldPublicInputsSip10 = (o: {
     fe32(o.commitment),
     fe32(o.ownerCommitment),
     feUint(o.amount),
+    fe32(o.oldRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     assetIdOf(o.token),
     feUint(o.circuitVersion),
   ]);
 
-/** transfer: op, nullifier, new_commitment, new_owner_commitment, merkle_root, asset_id, circuit_version */
+/** transfer: op, nullifier, new_commitment, new_owner_commitment, merkle_root, new_root, leaf_index, asset_id, circuit_version */
 export const transferPublicInputsSip10 = (o: {
   nullifier: Bytes32;
   newCommitment: Bytes32;
   newOwnerCommitment: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   token: string;
   circuitVersion: number;
 }): Bytes32 =>
@@ -64,6 +72,8 @@ export const transferPublicInputsSip10 = (o: {
     fe32(o.newCommitment),
     fe32(o.newOwnerCommitment),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     assetIdOf(o.token),
     feUint(o.circuitVersion),
   ]);
@@ -87,7 +97,7 @@ export const withdrawPublicInputsSip10 = (o: {
     feUint(o.circuitVersion),
   ]);
 
-/** split: op, nullifier, c1, oc1, c2, oc2, merkle_root, asset_id, circuit_version */
+/** split: op, nullifier, c1, oc1, c2, oc2, merkle_root, new_root, leaf_index, asset_id, circuit_version */
 export const splitPublicInputsSip10 = (o: {
   nullifier: Bytes32;
   commitment1: Bytes32;
@@ -95,6 +105,8 @@ export const splitPublicInputsSip10 = (o: {
   commitment2: Bytes32;
   ownerCommitment2: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   token: string;
   circuitVersion: number;
 }): Bytes32 =>
@@ -106,17 +118,21 @@ export const splitPublicInputsSip10 = (o: {
     fe32(o.commitment2),
     fe32(o.ownerCommitment2),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     assetIdOf(o.token),
     feUint(o.circuitVersion),
   ]);
 
-/** merge: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, asset_id, circuit_version */
+/** merge: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, new_root, leaf_index, asset_id, circuit_version */
 export const mergePublicInputsSip10 = (o: {
   nullifier1: Bytes32;
   nullifier2: Bytes32;
   commitment: Bytes32;
   ownerCommitment: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   token: string;
   circuitVersion: number;
 }): Bytes32 =>
@@ -127,6 +143,8 @@ export const mergePublicInputsSip10 = (o: {
     fe32(o.commitment),
     fe32(o.ownerCommitment),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     assetIdOf(o.token),
     feUint(o.circuitVersion),
   ]);

@@ -25,7 +25,7 @@ import { NETWORKS, MIN_SHIELD, MIN_WITHDRAWAL } from "../constants/networks.js";
 import { ApiProvider, type EncryptedNoteRecord } from "../providers/api.js";
 import { RelayerProvider } from "../providers/relayer.js";
 import { ZkVerifySubmitter } from "../providers/zkverify.js";
-import { requireEngine, type OwnerKey, type Inclusion, type MembershipWitness, type ProofSubmitter } from "../proving/index.js";
+import { requireEngine, type OwnerKey, type Inclusion, type MembershipWitness, type InsertionWitness, type ProofSubmitter } from "../proving/index.js";
 import { commitmentOf, ownerCommitmentOf, nullifierOf, randomBlinding, assetFieldOf } from "../crypto/commitments.js";
 import { toHex32, fePrincipal, bytesToHex, hexToBytes, bytesToBig } from "../crypto/field.js";
 import { encryptNote, encodeEncryptedNote, toHex } from "../crypto/encryption.js";
@@ -239,6 +239,20 @@ export class STXShield {
   private currentRootHex(): string {
     return "0x" + bytesToHex(this.tree.root);
   }
+  /** Witness proving the append of `commitmentHex` at the next free slot: the
+   *  slot is empty under the current root and inserting the commitment yields a
+   *  known new-root. The SIP-10 circuits bind this so a forged new-root cannot
+   *  verify. Non-mutating — call `tree.insert` afterwards to advance the tree. */
+  private insertionFor(commitmentHex: string): InsertionWitness {
+    const w = this.tree.insertionWitness(hexToBytes(commitmentHex));
+    return {
+      leafIndex: w.index,
+      indexBits: w.indexBits,
+      siblings: w.siblings.map((s) => bytesToBig(s)),
+      oldRoot: bytesToBig(w.oldRoot),
+      newRoot: bytesToBig(w.newRoot),
+    };
+  }
   /** Read the LIVE commitment-tree root from privacy-registry (Hiro read-only).
    *  Shield must declare this exact value as current-root or the tx reverts
    *  with ERR-STALE-ROOT (u252). */
@@ -340,17 +354,20 @@ export class STXShield {
     await this.syncTree();
 
     const { note, commitment, ownerCommitment, assetField } = this.newNote(base, owner, asset);
-    const proved = await engine.proveShield({ note: { amount: base, ownerPkX: owner.pkX, ownerPkY: owner.pkY, blinding: note.secret.blinding }, commitment, ownerCommitment, assetField });
 
     // current-root must equal the LIVE on-chain root (ERR-STALE-ROOT/u252). Append
     // the commitment to the chain-synced tree and publish the resulting REAL root
-    // as new-root, so later spends can prove membership against a known root.
+    // as new-root, so later spends can prove membership against a known root. The
+    // insertion witness (computed before the append) binds that transition into
+    // the proof so the published new-root cannot be forged.
     const currentRoot = await this.fetchCurrentRoot();
+    const insertion = this.insertionFor(note.commitment);
+    const proved = await engine.proveShield({ note: { amount: base, ownerPkX: owner.pkX, ownerPkY: owner.pkY, blinding: note.secret.blinding }, commitment, ownerCommitment, assetField, insertion });
     const leafIndex = this.tree.insert(hexToBytes((note.commitment)));
     const newRoot = this.currentRootHex();
     const ciphertext = await this.storeCiphertext(note, leafIndex);
 
-    const txid = await this.submitShield(asset, base, note.commitment, toHex32(ownerCommitment), currentRoot, newRoot, (await this.submitter.submit(proved)));
+    const txid = await this.submitShield(asset, base, note.commitment, toHex32(ownerCommitment), currentRoot, newRoot, insertion.leafIndex, (await this.submitter.submit(proved)));
     // Optimistic note: pending until the indexer observes it on chain. The API
     // flips it to confirmed once the commitment lands, and getNotes self-heals.
     const stored: ShieldNote = { ...note, ciphertext, root: newRoot, txid, status: "pending", secret: { ...note.secret, leafIndex } };
@@ -387,17 +404,18 @@ export class STXShield {
     const engine = requireEngine(this.cfg.proofEngine);
     await this.syncTree();
     const nf = nullifierOf(BigInt(input.commitment), input.secret.ownerSk);
+    const insertion = this.insertionFor(out.commitment);
     const proved = await engine.proveTransfer({
       nullifier: nf, newCommitment: BigInt(out.commitment), newOwnerCommitment: out.ownerCommitment,
       input: this.witnessNote(input), ownerSk: input.secret.ownerSk, output: this.witnessNote(out.note), membership: this.membership(input),
-      assetField: assetFieldFor(asset),
+      insertion, assetField: assetFieldFor(asset),
     });
     const currentRoot = this.currentRootHex();
     const outLeaf = this.tree.insert(hexToBytes((out.commitment)));
     const newRoot = this.currentRootHex();
     const txid = await this.relayer.submit("transfer", {
       nullifier: toHex32(nf), newCommitment: out.commitment, newOwnerCommitment: toHex32(out.ownerCommitment),
-      newMetadata: toHex32(0n), currentRoot, newRoot, ...this.tokenParam(asset),
+      newMetadata: toHex32(0n), currentRoot, newRoot, ...this.leafIndexParam(asset, insertion.leafIndex), ...this.tokenParam(asset),
     }, (await this.submitter.submit(proved)));
     await this.consume(input);
     // Publish the output encrypted to the RECIPIENT's viewing key so they (and
@@ -417,18 +435,24 @@ export class STXShield {
     await this.syncTree();
     const o1 = this.newNote(a1, owner, asset), o2 = this.newNote(a2, owner, asset);
     const nf = nullifierOf(BigInt(note.commitment), note.secret.ownerSk);
-    const proved = await engine.proveSplit({
-      nullifier: nf, commitment1: o1.commitment, ownerCommitment1: o1.ownerCommitment, commitment2: o2.commitment, ownerCommitment2: o2.ownerCommitment,
-      input: this.witnessNote(note), ownerSk: note.secret.ownerSk, out1: this.witnessNote(o1.note), out2: this.witnessNote(o2.note), membership: this.membership(note),
-      assetField: assetFieldFor(asset),
-    });
+    // Membership + both append witnesses are captured BEFORE mutating the tree:
+    // insertion1 appends output 1 at leaf_index over the current root, then
+    // insertion2 appends output 2 at leaf_index+1 over the intermediate root.
+    const membership = this.membership(note);
     const currentRoot = this.currentRootHex();
+    const insertion1 = this.insertionFor(o1.note.commitment);
     const l1 = this.tree.insert(hexToBytes((o1.note.commitment)));
+    const insertion2 = this.insertionFor(o2.note.commitment);
     const l2 = this.tree.insert(hexToBytes((o2.note.commitment)));
     const newRoot = this.currentRootHex();
+    const proved = await engine.proveSplit({
+      nullifier: nf, commitment1: o1.commitment, ownerCommitment1: o1.ownerCommitment, commitment2: o2.commitment, ownerCommitment2: o2.ownerCommitment,
+      input: this.witnessNote(note), ownerSk: note.secret.ownerSk, out1: this.witnessNote(o1.note), out2: this.witnessNote(o2.note), membership,
+      insertion1, insertion2, assetField: assetFieldFor(asset),
+    });
     const txid = await this.relayer.submit("split", {
       nullifier: toHex32(nf), commitment1: o1.note.commitment, ownerCommitment1: toHex32(o1.ownerCommitment), metadata1: toHex32(0n),
-      commitment2: o2.note.commitment, ownerCommitment2: toHex32(o2.ownerCommitment), metadata2: toHex32(0n), currentRoot, newRoot, ...this.tokenParam(asset),
+      commitment2: o2.note.commitment, ownerCommitment2: toHex32(o2.ownerCommitment), metadata2: toHex32(0n), currentRoot, newRoot, ...this.leafIndexParam(asset, insertion1.leafIndex), ...this.tokenParam(asset),
     }, (await this.submitter.submit(proved)));
     await this.consume(note);
     // Register the new notes so they persist + are discoverable after reload.
@@ -452,17 +476,18 @@ export class STXShield {
     const engine = requireEngine(this.cfg.proofEngine);
     await this.syncTree();
     const nf1 = nullifierOf(BigInt(i1.commitment), i1.secret.ownerSk), nf2 = nullifierOf(BigInt(i2.commitment), i2.secret.ownerSk);
+    const insertion = this.insertionFor(out.note.commitment);
     const proved = await engine.proveMerge({
       nullifier1: nf1, nullifier2: nf2, commitment: out.commitment, ownerCommitment: out.ownerCommitment,
       input1: this.witnessNote(i1), ownerSk1: i1.secret.ownerSk, membership1: this.membership(i1),
       input2: this.witnessNote(i2), ownerSk2: i2.secret.ownerSk, membership2: this.membership(i2), output: this.witnessNote(out.note),
-      assetField: assetFieldFor(asset),
+      insertion, assetField: assetFieldFor(asset),
     });
     const currentRoot = this.currentRootHex();
     const leaf = this.tree.insert(hexToBytes((out.note.commitment)));
     const newRoot = this.currentRootHex();
     const txid = await this.relayer.submit("merge", {
-      nullifier1: toHex32(nf1), nullifier2: toHex32(nf2), commitment: out.note.commitment, ownerCommitment: toHex32(out.ownerCommitment), metadata: toHex32(0n), currentRoot, newRoot, ...this.tokenParam(asset),
+      nullifier1: toHex32(nf1), nullifier2: toHex32(nf2), commitment: out.note.commitment, ownerCommitment: toHex32(out.ownerCommitment), metadata: toHex32(0n), currentRoot, newRoot, ...this.leafIndexParam(asset, insertion.leafIndex), ...this.tokenParam(asset),
     }, (await this.submitter.submit(proved)));
     await this.consume(i1);
     await this.consume(i2);
@@ -509,6 +534,11 @@ export class STXShield {
   private tokenParam(asset: AssetInfo): Record<string, string> {
     return asset.native ? {} : { token: asset.token as string };
   }
+  /** The proof-bound leaf index the pool asserts against the registry slot.
+   *  Both native STX and SIP-10 pools are v2 and take it. */
+  private leafIndexParam(_asset: AssetInfo, leafIndex: number): Record<string, number> {
+    return { leafIndex };
+  }
   private pickNote(base: bigint, asset: AssetInfo): ShieldNote {
     const exact = this.store.unspent().find((n) => n.amount === base && sameAsset(n.asset, asset));
     if (!exact) throw new InvalidNoteError(`no unspent ${asset.symbol} note of exactly ${base} base units; split first`);
@@ -546,7 +576,7 @@ export class STXShield {
     }
   }
 
-  private async submitShield(asset: AssetInfo, amount: bigint, commitment: string, ownerCommitment: string, currentRoot: string, newRoot: string, inc: Inclusion): Promise<string> {
+  private async submitShield(asset: AssetInfo, amount: bigint, commitment: string, ownerCommitment: string, currentRoot: string, newRoot: string, leafIndex: number, inc: Inclusion): Promise<string> {
     if (!this.cfg.signer) throw new ConfigError("a signer is required to shield");
     // The relayer network publishes the aggregation root; wait until it is on
     // chain — on THIS ASSET'S verifier (native STX vs sip10-zk-verifier) —
@@ -555,7 +585,8 @@ export class STXShield {
     await this.waitForRoot(inc, this.splitPrincipal(asset.verifier)[1]);
     const buf = (h: string) => Cl.bufferFromHex(h.replace(/^0x/, ""));
     const incArgs = [Cl.uint(inc.domainId), Cl.uint(inc.aggregationId), Cl.list(inc.merklePath.map((p) => buf(p))), Cl.uint(inc.leafIndex)];
-    const core = [buf(commitment), buf(ownerCommitment), buf(toHex32(0n)), buf(currentRoot), buf(newRoot), ...incArgs];
+    // Both pools (v2) bind the leaf-index between new-root and the inclusion args.
+    const core = [buf(commitment), buf(ownerCommitment), buf(toHex32(0n)), buf(currentRoot), buf(newRoot), Cl.uint(leafIndex), ...incArgs];
     // Route to the asset's pool. Shield is necessarily user-signed (it moves the
     // caller's own tokens). SIP-10 leads with the token trait; native STX does not.
     const [addr, name] = this.poolOf(asset);

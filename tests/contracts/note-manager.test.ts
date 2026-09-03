@@ -97,7 +97,9 @@ const limitsCV = (overrides: Partial<typeof DEFAULT_LIMITS> = {}) =>
   uintTuple({ ...DEFAULT_LIMITS, ...overrides });
 const versionsCV = (overrides: Record<string, number> = {}) =>
   uintTuple({
-    protocol: 1, verifier: 1, note: 1, circuit: 1, commitment: 1, root: 1,
+    // circuit ships at 2 in v2; versions are monotonic non-decreasing, so the
+    // baseline must not regress it.
+    protocol: 1, verifier: 1, note: 1, circuit: 2, commitment: 1, root: 1,
     ...overrides,
   });
 

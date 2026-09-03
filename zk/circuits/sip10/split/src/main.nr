@@ -3,17 +3,21 @@
 // =============================================================================
 // SIP-10 sibling of the STX split circuit. Proves a single input note is split
 // into two output notes with value fully conserved, the spender is the owner,
-// and the input is a member of the committed tree. Amounts stay hidden. Every
-// commitment (input + both outputs) is computed from the SINGLE public
-// `asset_id`, so all three notes are STRUCTURALLY the same asset -- an in-circuit
-// asset mix is impossible.
+// the input is a member of the committed tree, and the tree transition:
+// commitment_1 is appended at leaf_index (empty under merkle_root) to an
+// intermediate root, then commitment_2 at leaf_index+1 (empty under that) to
+// yield new_root. Every commitment uses the SINGLE public `asset_id`.
 //
-// Public inputs (CANONICAL order; sip10-pool / split-merge flow reproduces it):
+// Public inputs (CANONICAL order; sip10-pool reproduces it):
 //   op=4, nullifier, commitment_1, owner_commitment_1, commitment_2,
-//   owner_commitment_2, merkle_root, asset_id, circuit_version
+//   owner_commitment_2, merkle_root, new_root, leaf_index, asset_id,
+//   circuit_version
 // =============================================================================
 
-use stx_shield_sip10_lib::{Note, compute_nullifier, assert_merkle_membership, assert_owner, assert_asset_bound, TREE_DEPTH};
+use stx_shield_sip10_lib::{
+    Note, compute_nullifier, compute_merkle_root, assert_merkle_membership, assert_owner,
+    assert_asset_bound, assert_insertion, assert_index_bits, TREE_DEPTH,
+};
 
 fn main(
     // ---- public ----
@@ -24,6 +28,8 @@ fn main(
     commitment_2: pub Field,
     owner_commitment_2: pub Field,
     merkle_root: pub Field,
+    new_root: pub Field,
+    leaf_index: pub Field,
     asset_id: pub Field,
     circuit_version: pub Field,
     // ---- private witness ----
@@ -33,9 +39,13 @@ fn main(
     merkle_siblings: [Field; TREE_DEPTH],
     out_1: Note,
     out_2: Note,
+    insertion_index_bits_1: [bool; TREE_DEPTH],
+    insertion_siblings_1: [Field; TREE_DEPTH],
+    insertion_index_bits_2: [bool; TREE_DEPTH],
+    insertion_siblings_2: [Field; TREE_DEPTH],
 ) {
     assert(op == 4, "wrong op for split circuit");
-    assert(circuit_version == 1, "unsupported circuit version");
+    assert(circuit_version == 2, "unsupported circuit version");
     assert_asset_bound(asset_id);
 
     // input commitment is PRIVATE and bound to asset_id; membership proves it is
@@ -67,6 +77,15 @@ fn main(
 
     // outputs must be distinct leaves
     assert(commitment_1 != commitment_2, "split outputs collide");
+
+    // Two sequential appends: commitment_1 at leaf_index (empty under merkle_root)
+    // -> intermediate root; commitment_2 at leaf_index+1 (empty under that) ->
+    // new_root.
+    assert_index_bits(leaf_index, insertion_index_bits_1);
+    assert_index_bits(leaf_index + 1, insertion_index_bits_2);
+    let mid_root = compute_merkle_root(commitment_1, insertion_index_bits_1, insertion_siblings_1);
+    assert_insertion(commitment_1, insertion_index_bits_1, insertion_siblings_1, merkle_root, mid_root);
+    assert_insertion(commitment_2, insertion_index_bits_2, insertion_siblings_2, mid_root, new_root);
 }
 
 #[test]

@@ -122,15 +122,19 @@ export const shieldInputsHash = (o: {
   ownerCommitment: Uint8Array;
   metadata?: Uint8Array;
   amount: number | bigint;
-  currentRoot?: Uint8Array;
-  newRoot?: Uint8Array;
+  currentRoot: Uint8Array;
+  newRoot: Uint8Array;
+  leafIndex: number | bigint;
   circuitVersion?: number;
 }): Uint8Array =>
   shieldPublicInputs({
     commitment: o.commitment,
     ownerCommitment: o.ownerCommitment,
     amount: BigInt(o.amount),
-    circuitVersion: o.circuitVersion ?? 1,
+    oldRoot: o.currentRoot,
+    newRoot: o.newRoot,
+    leafIndex: o.leafIndex,
+    circuitVersion: o.circuitVersion ?? 2,
   });
 
 export const transferInputsHash = (o: {
@@ -139,7 +143,8 @@ export const transferInputsHash = (o: {
   newOwnerCommitment: Uint8Array;
   newMetadata?: Uint8Array;
   currentRoot: Uint8Array;
-  newRoot?: Uint8Array;
+  newRoot: Uint8Array;
+  leafIndex: number | bigint;
   circuitVersion?: number;
 }): Uint8Array =>
   transferPublicInputs({
@@ -147,7 +152,9 @@ export const transferInputsHash = (o: {
     newCommitment: o.newCommitment,
     newOwnerCommitment: o.newOwnerCommitment,
     merkleRoot: o.currentRoot,
-    circuitVersion: o.circuitVersion ?? 1,
+    newRoot: o.newRoot,
+    leafIndex: o.leafIndex,
+    circuitVersion: o.circuitVersion ?? 2,
   });
 
 export const withdrawInputsHash = (o: {
@@ -162,7 +169,7 @@ export const withdrawInputsHash = (o: {
     amount: BigInt(o.amount),
     recipient: o.recipient,
     merkleRoot: o.root,
-    circuitVersion: o.circuitVersion ?? 1,
+    circuitVersion: o.circuitVersion ?? 2,
   });
 
 export const splitInputsHash = (o: {
@@ -174,7 +181,8 @@ export const splitInputsHash = (o: {
   ownerCommitment2: Uint8Array;
   metadata2?: Uint8Array;
   currentRoot: Uint8Array;
-  newRoot?: Uint8Array;
+  newRoot: Uint8Array;
+  leafIndex: number | bigint;
   circuitVersion?: number;
 }): Uint8Array =>
   splitPublicInputs({
@@ -184,7 +192,9 @@ export const splitInputsHash = (o: {
     commitment2: o.commitment2,
     ownerCommitment2: o.ownerCommitment2,
     merkleRoot: o.currentRoot,
-    circuitVersion: o.circuitVersion ?? 1,
+    newRoot: o.newRoot,
+    leafIndex: o.leafIndex,
+    circuitVersion: o.circuitVersion ?? 2,
   });
 
 export const mergeInputsHash = (o: {
@@ -194,7 +204,8 @@ export const mergeInputsHash = (o: {
   ownerCommitment: Uint8Array;
   metadata?: Uint8Array;
   currentRoot: Uint8Array;
-  newRoot?: Uint8Array;
+  newRoot: Uint8Array;
+  leafIndex: number | bigint;
   circuitVersion?: number;
 }): Uint8Array =>
   mergePublicInputs({
@@ -203,5 +214,7 @@ export const mergeInputsHash = (o: {
     commitment: o.commitment,
     ownerCommitment: o.ownerCommitment,
     merkleRoot: o.currentRoot,
-    circuitVersion: o.circuitVersion ?? 1,
+    newRoot: o.newRoot,
+    leafIndex: o.leafIndex,
+    circuitVersion: o.circuitVersion ?? 2,
   });

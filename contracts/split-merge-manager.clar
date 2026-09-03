@@ -67,6 +67,7 @@
 (define-constant ERR-DUPLICATE-INPUT (err u355))       ;; the two merge inputs are the same note/nullifier
 (define-constant ERR-DUPLICATE-OUTPUT (err u356))      ;; the two split outputs collide
 (define-constant ERR-SWITCH-UNCHANGED (err u357))      ;; operation switch no-op
+(define-constant ERR-LEAF-INDEX-MISMATCH (err u358))   ;; registry slot != proof-bound leaf-index
 
 ;; -----------------------------------------------------------------------------
 ;; STORAGE -- Emergency operation switches
@@ -173,6 +174,7 @@
     (metadata-2 (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -195,14 +197,15 @@
     (try! (check-current-root current-root))
     (let (
         (fee (try! (contract-call? .protocol-fees calculate-fee FEE-TYPE-TRANSFER u0)))
-        ;; CANONICAL: the split circuit's public inputs, in order.
-        ;; metadata-1 / metadata-2 / new-root are contract-level only.
+        ;; CANONICAL: the split circuit's public inputs, in order:
+        ;; op, nullifier, commitment_1, owner_commitment_1, commitment_2,
+        ;; owner_commitment_2, merkle_root, new_root, leaf_index, circuit_version.
+        ;; metadata-1 / metadata-2 are contract-level only.
         (inputs-hash (keccak256 (concat
-          (concat (concat (fe-uint PROOF-TYPE-SPLIT) nullifier)
-                  (concat commitment-1 owner-commitment-1))
-          (concat (concat commitment-2 owner-commitment-2)
-                  (concat current-root
-                          (fe-uint (contract-call? .privacy-registry get-circuit-version))))
+          (concat (concat (concat (concat (concat (concat (concat
+            (fe-uint PROOF-TYPE-SPLIT) nullifier) commitment-1) owner-commitment-1) commitment-2) owner-commitment-2) current-root) new-root)
+          (concat (fe-uint leaf-index)
+                  (fe-uint (contract-call? .privacy-registry get-circuit-version)))
         )))
       )
       (try! (contract-call? .zk-verifier verify-proof
@@ -227,6 +230,8 @@
             commitment-1 (contract-call? .privacy-registry get-commitment-version)
           )))
         )
+        ;; the first output's registry slot must equal the proof-bound leaf-index.
+        (asserts! (is-eq leaf-1 leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note
           commitment-1 owner-commitment-1 metadata-1
           (contract-call? .privacy-registry get-note-version)
@@ -236,6 +241,8 @@
               commitment-2 (contract-call? .privacy-registry get-commitment-version)
             )))
           )
+          ;; the second output must land at leaf-index + 1.
+          (asserts! (is-eq leaf-2 (+ leaf-index u1)) ERR-LEAF-INDEX-MISMATCH)
           (try! (contract-call? .note-manager register-note
             commitment-2 owner-commitment-2 metadata-2
             (contract-call? .privacy-registry get-note-version)
@@ -282,6 +289,7 @@
     (metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -306,12 +314,14 @@
     (try! (check-current-root current-root))
     (let (
         (fee (try! (contract-call? .protocol-fees calculate-fee FEE-TYPE-TRANSFER u0)))
-        ;; CANONICAL: the merge circuit's public inputs, in order.
+        ;; CANONICAL: the merge circuit's public inputs, in order:
+        ;; op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root,
+        ;; new_root, leaf_index, circuit_version.
         (inputs-hash (keccak256 (concat
-          (concat (concat (fe-uint PROOF-TYPE-MERGE) nullifier-1) nullifier-2)
-          (concat (concat commitment owner-commitment)
-                  (concat current-root
-                          (fe-uint (contract-call? .privacy-registry get-circuit-version))))
+          (concat (concat (concat (concat (concat (concat
+            (fe-uint PROOF-TYPE-MERGE) nullifier-1) nullifier-2) commitment) owner-commitment) current-root) new-root)
+          (concat (fe-uint leaf-index)
+                  (fe-uint (contract-call? .privacy-registry get-circuit-version)))
         )))
       )
       (try! (contract-call? .zk-verifier verify-proof
@@ -332,10 +342,12 @@
       (try! (contract-call? .privacy-registry register-nullifier nullifier-2))
       ;; create the single merged output
       (let (
-          (leaf-index (try! (contract-call? .privacy-registry register-commitment
+          (registered-index (try! (contract-call? .privacy-registry register-commitment
             commitment (contract-call? .privacy-registry get-commitment-version)
           )))
         )
+        ;; the registry-assigned slot must equal the proof-bound leaf-index.
+        (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note
           commitment owner-commitment metadata
           (contract-call? .privacy-registry get-note-version)
@@ -348,12 +360,12 @@
           nullifier-1: nullifier-1,
           nullifier-2: nullifier-2,
           commitment: commitment,
-          leaf-index: leaf-index,
+          leaf-index: registered-index,
           fee: fee,
           new-root: new-root,
           height: stacks-block-height,
         })
-        (ok leaf-index)
+        (ok registered-index)
       )
     )
   )

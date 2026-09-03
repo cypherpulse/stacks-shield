@@ -79,22 +79,26 @@ const noteRead = (fn: string, args: unknown[] = []) =>
 /* Wire the whole protocol: authorize the pool AND the manager (both write to
    the registry + note-manager), bootstrap the tree, register shield/split/merge
    vkeys, seat the committee. */
-type Ctx = { root: Uint8Array; rootCounter: number };
+type Ctx = { root: Uint8Array; rootCounter: number; leafCount: number };
+// The registry's live circuit version (v2) — what the pools pass to verify-proof.
+const CV = (): number =>
+  Number((simnet.callReadOnlyFn(REGISTRY, "get-circuit-version", [], deployer).result as { value: bigint }).value);
 const wire = (): Ctx => {
   for (const c of [POOL, NOTES, MANAGER]) {
     regCall("add-authorized-caller", [Cl.contractPrincipal(deployer, c)], deployer);
   }
   regCall("update-root", [Cl.buffer(GENESIS_ROOT), Cl.uint(1)], deployer);
+  const cv = CV();
   for (const t of [1, 4, 5] as const) {
     simnet.callPublicFn(
       VERIFIER,
       "register-verification-key",
-      [Cl.uint(t), Cl.uint(1), Cl.buffer(VKEY[t]), Cl.uint(PROOF_LEN)],
+      [Cl.uint(t), Cl.uint(cv), Cl.buffer(VKEY[t]), Cl.uint(PROOF_LEN)],
       deployer
     );
   }
-  prover.configureBindings([1, 2, 3, 4, 5], 1);
-  return { root: GENESIS_ROOT, rootCounter: 1 };
+  prover.configureBindings([1, 2, 3, 4, 5], cv);
+  return { root: GENESIS_ROOT, rootCounter: 1, leafCount: 0 };
 };
 
 /* Create a spendable note by genuinely shielding through the pool. */
@@ -104,6 +108,7 @@ const shield = (ctx: Ctx, user: string, n: number, amount = 10 * ONE_STX) => {
   const meta = bytes32(n, 0x4d);
   const currentRoot = ctx.root;
   const newRoot = bytes32(++ctx.rootCounter, 0x52);
+  const leafIndex = ctx.leafCount;
   const inputsHash = shieldInputsHash({
     commitment,
     ownerCommitment: owner,
@@ -111,6 +116,7 @@ const shield = (ctx: Ctx, user: string, n: number, amount = 10 * ONE_STX) => {
     amount,
     currentRoot,
     newRoot,
+    leafIndex,
   });
   const inclusionArgs = prover.args(1, inputsHash);
   const res = simnet.callPublicFn(
@@ -123,11 +129,12 @@ const shield = (ctx: Ctx, user: string, n: number, amount = 10 * ONE_STX) => {
       Cl.buffer(meta),
       Cl.buffer(currentRoot),
       Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
       ...inclusionArgs,
     ],
     user
   );
-  if (res.result.type === "ok") ctx.root = newRoot;
+  if (res.result.type === "ok") { ctx.root = newRoot; ctx.leafCount++; }
   return { ...res, commitment };
 };
 
@@ -151,6 +158,7 @@ const doSplit = (
   const c2 = overrides.commitment2 ?? bytes32(bN, 0x3c);
   const currentRoot = overrides.currentRoot ?? ctx.root;
   const newRoot = bytes32(++ctx.rootCounter, 0x52);
+  const leafIndex = ctx.leafCount; // first output; second lands at leafIndex+1
   const inputsHash = splitInputsHash({
     nullifier,
     commitment1: c1,
@@ -161,6 +169,7 @@ const doSplit = (
     metadata2: bytes32(bN, 0x4d),
     currentRoot,
     newRoot,
+    leafIndex,
   });
   const inclusionArgs = overrides.inclusion ?? prover.args(4, inputsHash);
   const res = mgrCall(
@@ -175,11 +184,12 @@ const doSplit = (
       Cl.buffer(bytes32(bN, 0x4d)),
       Cl.buffer(currentRoot),
       Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
       ...inclusionArgs,
     ],
     user
   );
-  if (res.result.type === "ok") ctx.root = newRoot;
+  if (res.result.type === "ok") { ctx.root = newRoot; ctx.leafCount += 2; }
   return { ...res, c1, c2, nullifier };
 };
 
@@ -204,6 +214,7 @@ const doMerge = (
   const commitment = bytes32(outN, 0x3c);
   const currentRoot = overrides.currentRoot ?? ctx.root;
   const newRoot = bytes32(++ctx.rootCounter, 0x52);
+  const leafIndex = ctx.leafCount;
   const inputsHash = mergeInputsHash({
     nullifier1: null1,
     nullifier2: null2,
@@ -212,6 +223,7 @@ const doMerge = (
     metadata: bytes32(outN, 0x4d),
     currentRoot,
     newRoot,
+    leafIndex,
   });
   const inclusionArgs = prover.args(5, inputsHash);
   const res = mgrCall(
@@ -224,11 +236,12 @@ const doMerge = (
       Cl.buffer(bytes32(outN, 0x4d)),
       Cl.buffer(currentRoot),
       Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
       ...inclusionArgs,
     ],
     user
   );
-  if (res.result.type === "ok") ctx.root = newRoot;
+  if (res.result.type === "ok") { ctx.root = newRoot; ctx.leafCount++; }
   return { ...res, commitment };
 };
 

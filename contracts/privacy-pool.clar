@@ -7,9 +7,9 @@
 ;; custodian of all shielded STX. It owns no protocol state of its own beyond
 ;; three emergency operation switches -- every fact lives in its layer:
 ;;
-;;   privacy-registry (FROZEN)  commitments, nullifiers, roots, limits,
+;;   privacy-registry        commitments, nullifiers, roots, limits,
 ;;                              versions, statistics, access control
-;;   note-manager     (FROZEN)  note lifecycle
+;;   note-manager              note lifecycle
 ;;   zk-verifier                proof acceptance
 ;;   protocol-fees              fee configuration and treasury
 ;;
@@ -95,6 +95,7 @@
 (define-constant ERR-INVALID-RECIPIENT (err u255))    ;; burn / pool / fees contract as recipient
 (define-constant ERR-STX-TRANSFER-FAILED (err u256))  ;; underlying STX transfer failed
 (define-constant ERR-SWITCH-UNCHANGED (err u257))     ;; operation switch no-op
+(define-constant ERR-LEAF-INDEX-MISMATCH (err u258))  ;; registry slot != proof-bound leaf-index
 
 ;; -----------------------------------------------------------------------------
 ;; STORAGE -- Emergency operation switches
@@ -118,11 +119,13 @@
 ;;
 ;; in the circuit's declaration order, and NOTHING ELSE.
 ;;
-;; CORRECTNESS RULE: this contract must never hash a value the circuit does
-;; not take as a public input. Values like `metadata`, `current-root` and
-;; `new-root` are enforced by contract-level checks instead -- binding them
-;; here would commit to data no proof verifies, which is precisely the
-;; mismatch that made the previous construction unverifiable.
+;; CORRECTNESS RULE: this contract must hash EXACTLY the circuit's public
+;; inputs, in declaration order -- no more, no less. The tree transition is a
+;; circuit input: `current-root` (the old root the append starts from),
+;; `new-root` (the root after it), and `leaf-index` (the slot) are all bound in
+;; the proof, so they are hashed here. `metadata` is NOT a circuit input and is
+;; enforced by contract-level checks instead -- hashing it would commit to data
+;; no proof verifies.
 
 ;; 16 zero bytes: a Clarity uint is 128-bit, so a field element built from one
 ;; is left-padded to 32 bytes.
@@ -242,6 +245,7 @@
     (metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -254,12 +258,13 @@
     (try! (check-current-root current-root))
     (let (
         (fee (try! (contract-call? .protocol-fees calculate-fee FEE-TYPE-SHIELD amount)))
-        ;; CANONICAL: exactly the shield circuit's public inputs, in order.
-        ;; metadata / current-root / new-root are NOT circuit inputs and are
-        ;; therefore validated by contract checks, never hashed here.
+        ;; CANONICAL: exactly the shield circuit's public inputs, in order:
+        ;; op, commitment, owner_commitment, amount, old_root, new_root,
+        ;; leaf_index, circuit_version. metadata is NOT a circuit input and is
+        ;; validated by contract checks, never hashed here.
         (inputs-hash (keccak256 (concat
           (concat (fe-uint PROOF-TYPE-SHIELD) commitment)
-          (concat (concat owner-commitment (fe-uint amount))
+          (concat (concat (concat (concat (concat owner-commitment (fe-uint amount)) current-root) new-root) (fe-uint leaf-index))
                   (fe-uint (contract-call? .privacy-registry get-circuit-version)))
         )))
       )
@@ -288,11 +293,13 @@
         (contract-call? .privacy-registry get-note-version)
       ))
       (let (
-          (leaf-index (try! (contract-call? .privacy-registry register-commitment
+          (registered-index (try! (contract-call? .privacy-registry register-commitment
             commitment
             (contract-call? .privacy-registry get-commitment-version)
           )))
         )
+        ;; the registry-assigned slot must equal the proof-bound leaf-index.
+        (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .privacy-registry update-root
           new-root
           (contract-call? .privacy-registry get-root-version)
@@ -301,13 +308,13 @@
         (print {
           event: "shielded",
           commitment: commitment,
-          leaf-index: leaf-index,
+          leaf-index: registered-index,
           amount: amount,
           fee: fee,
           new-root: new-root,
           height: stacks-block-height,
         })
-        (ok leaf-index)
+        (ok registered-index)
       )
     )
   )
@@ -334,6 +341,7 @@
     (new-metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -345,11 +353,13 @@
     (try! (check-current-root current-root))
     (let (
         (fee (try! (contract-call? .protocol-fees calculate-fee FEE-TYPE-TRANSFER u0)))
-        ;; CANONICAL: the transfer circuit's public inputs, in order.
-        ;; merkle_root is the root membership is proven against = current-root.
+        ;; CANONICAL: the transfer circuit's public inputs, in order:
+        ;; op, nullifier, new_commitment, new_owner_commitment, merkle_root,
+        ;; new_root, leaf_index, circuit_version. merkle_root is the root
+        ;; membership is proven against = current-root.
         (inputs-hash (keccak256 (concat
           (concat (concat (fe-uint PROOF-TYPE-TRANSFER) nullifier) new-commitment)
-          (concat (concat new-owner-commitment current-root)
+          (concat (concat (concat (concat new-owner-commitment current-root) new-root) (fe-uint leaf-index))
                   (fe-uint (contract-call? .privacy-registry get-circuit-version)))
         )))
       )
@@ -372,11 +382,13 @@
       ;; protocol-level one-time token for the consumed note
       (try! (contract-call? .privacy-registry register-nullifier nullifier))
       (let (
-          (leaf-index (try! (contract-call? .privacy-registry register-commitment
+          (registered-index (try! (contract-call? .privacy-registry register-commitment
             new-commitment
             (contract-call? .privacy-registry get-commitment-version)
           )))
         )
+        ;; the registry-assigned slot must equal the proof-bound leaf-index.
+        (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note
           new-commitment
           new-owner-commitment
@@ -392,12 +404,12 @@
           event: "transferred",
           nullifier: nullifier,
           new-commitment: new-commitment,
-          leaf-index: leaf-index,
+          leaf-index: registered-index,
           fee: fee,
           new-root: new-root,
           height: stacks-block-height,
         })
-        (ok leaf-index)
+        (ok registered-index)
       )
     )
   )
@@ -438,6 +450,7 @@
       (and
         (not (is-eq recipient BURN-ADDRESS))
         (not (is-eq recipient (as-contract tx-sender)))
+        (not (is-eq recipient .protocol-fees))
       )
       ERR-INVALID-RECIPIENT
     )

@@ -67,6 +67,11 @@ const base = {
   token: Principal.optional(),
 };
 
+/** The leaf index a SIP-10 append is proof-bound to. REQUIRED for SIP-10
+ *  operations (the pool asserts the registry assigns exactly this slot); absent
+ *  for native STX (v1 pools take no leaf-index). Validated in buildCall. */
+const leafIndex = z.number().int().nonnegative().optional();
+
 export const TransferRequestSchema = z.object({
   ...base,
   nullifier: Bytes32,
@@ -75,6 +80,7 @@ export const TransferRequestSchema = z.object({
   newMetadata: Bytes32,
   currentRoot: Bytes32,
   newRoot: Bytes32,
+  leafIndex,
 });
 
 export const WithdrawRequestSchema = z.object({
@@ -98,6 +104,7 @@ export const SplitRequestSchema = z.object({
   metadata2: Bytes32,
   currentRoot: Bytes32,
   newRoot: Bytes32,
+  leafIndex,
 });
 
 export const MergeRequestSchema = z.object({
@@ -109,6 +116,7 @@ export const MergeRequestSchema = z.object({
   metadata: Bytes32,
   currentRoot: Bytes32,
   newRoot: Bytes32,
+  leafIndex,
 });
 
 /** Shield is deliberately NOT relayable: it moves STX *from* the caller, so

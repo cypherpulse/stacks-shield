@@ -94,7 +94,7 @@ describe("shield", () => {
     const res = simnet.callPublicFn(POOL, "shield", [
       Cl.contractPrincipal(deployer, "privacy-pool"), // not a registered SIP-10 asset
       Cl.uint(10_000), Cl.buffer(bytes32(9, 1)), Cl.buffer(bytes32(9, 2)), Cl.buffer(bytes32(9, 3)),
-      Cl.buffer(p.currentRoot), Cl.buffer(bytes32(99, 0x52)),
+      Cl.buffer(p.currentRoot), Cl.buffer(bytes32(99, 0x52)), Cl.uint(0),
       Cl.uint(1), Cl.uint(1), Cl.list([]), Cl.uint(0),
     ], alice);
     // privacy-pool is not a SIP-010 trait impl -> analysis/exec rejects; if it

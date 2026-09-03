@@ -102,22 +102,27 @@ const setFee = (type: number, bps: number, flat: number) =>
   authorize the pool and note-manager contracts, bootstrap the genesis root,
   register the three circuit vkeys, and seat the attestation committee.
 */
-type Ctx = { root: Uint8Array; rootCounter: number };
+type Ctx = { root: Uint8Array; rootCounter: number; leafCount: number };
+
+// The registry's live circuit version (v2) — what the pool passes to verify-proof.
+const CV = (): number =>
+  Number((regRead("get-circuit-version") as { value: bigint }).value);
 
 const wire = (): Ctx => {
   regCall("add-authorized-caller", [Cl.contractPrincipal(deployer, POOL)], deployer);
   regCall("add-authorized-caller", [Cl.contractPrincipal(deployer, NOTES)], deployer);
   regCall("update-root", [Cl.buffer(GENESIS_ROOT), Cl.uint(1)], deployer);
+  const cv = CV();
   for (const t of [1, 2, 3] as const) {
     simnet.callPublicFn(
       VERIFIER,
       "register-verification-key",
-      [Cl.uint(t), Cl.uint(1), Cl.buffer(VKEY[t]), Cl.uint(PROOF_LEN)],
+      [Cl.uint(t), Cl.uint(cv), Cl.buffer(VKEY[t]), Cl.uint(PROOF_LEN)],
       deployer
     );
   }
-  prover.configureBindings([1, 2, 3, 4, 5], 1);
-  return { root: GENESIS_ROOT, rootCounter: 1 };
+  prover.configureBindings([1, 2, 3, 4, 5], cv);
+  return { root: GENESIS_ROOT, rootCounter: 1, leafCount: 0 };
 };
 
 /** Attested shield. Advances ctx.root on success. */
@@ -136,6 +141,7 @@ const doShield = (
   const meta = bytes32(n, 0x4d);
   const currentRoot = overrides.currentRoot ?? ctx.root;
   const newRoot = bytes32(++ctx.rootCounter, 0x52);
+  const leafIndex = ctx.leafCount;
   const inputsHash = shieldInputsHash({
     commitment,
     ownerCommitment: owner,
@@ -143,6 +149,7 @@ const doShield = (
     amount,
     currentRoot,
     newRoot,
+    leafIndex,
   });
   const inclusion = overrides.inclusion ?? prover.args(1, inputsHash);
   const res = poolCall(
@@ -154,11 +161,12 @@ const doShield = (
       Cl.buffer(meta),
       Cl.buffer(currentRoot),
       Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
       ...inclusion,
     ],
     user
   );
-  if (res.result.type === "ok") ctx.root = newRoot;
+  if (res.result.type === "ok") { ctx.root = newRoot; ctx.leafCount++; }
   return { ...res, commitment, newRoot };
 };
 
@@ -177,6 +185,7 @@ const doTransfer = (
   const newMeta = bytes32(newN, 0x4d);
   const currentRoot = overrides.currentRoot ?? ctx.root;
   const newRoot = bytes32(++ctx.rootCounter, 0x52);
+  const leafIndex = ctx.leafCount;
   const inputsHash = transferInputsHash({
     nullifier,
     newCommitment,
@@ -184,6 +193,7 @@ const doTransfer = (
     newMetadata: newMeta,
     currentRoot,
     newRoot,
+    leafIndex,
   });
   const res = poolCall(
     "transfer",
@@ -194,11 +204,12 @@ const doTransfer = (
       Cl.buffer(newMeta),
       Cl.buffer(currentRoot),
       Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
       ...prover.args(2, inputsHash),
     ],
     user
   );
-  if (res.result.type === "ok") ctx.root = newRoot;
+  if (res.result.type === "ok") { ctx.root = newRoot; ctx.leafCount++; }
   return { ...res, nullifier, newCommitment, newRoot };
 };
 
@@ -314,12 +325,12 @@ describe("shield", () => {
     const ctx = wire();
     doShield(ctx, alice, 1, 10 * ONE_STX);
 
-    // Identical parameters now produce an identical statement, because the
-    // binding contains ONLY the circuit's public inputs -- metadata and roots
-    // no longer perturb it. So a byte-identical replay is caught earlier and
-    // more strongly, by the verifier's proof-id registry.
+    // The tree transition (new_root + leaf_index) is now part of the binding, so
+    // re-shielding the same commitment produces a DISTINCT statement that passes
+    // the verifier — and the duplicate is caught precisely, one layer deeper, by
+    // the note-manager's duplicate-note guard.
     expect(doShield(ctx, bob, 1, 10 * ONE_STX).result).toBeErr(
-      Cl.uint(ERR.VERIFIER_PROOF_REPLAY)
+      Cl.uint(ERR.NOTE_DUPLICATE)
     );
 
     // A genuinely different statement (different amount) that nonetheless

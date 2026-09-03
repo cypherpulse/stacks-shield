@@ -84,10 +84,13 @@ export class Protocol {
       this.regCall("add-authorized-caller", [Cl.contractPrincipal(this.deployer, c)]);
     }
     this.regCall("update-root", [Cl.buffer(GENESIS_ROOT), Cl.uint(1)]);
+    // Register vkeys + bindings at the registry's live circuit version (v2), which
+    // is what the pool passes to verify-proof.
+    const cv = this.liveCircuitVersion();
     for (const t of [1, 2, 3, 4, 5] as const) {
-      this.registerVkey(t, 1, VKEY[t]);
+      this.registerVkey(t, cv, VKEY[t]);
     }
-    this.configureBindings([1, 2, 3, 4, 5], 1);
+    this.configureBindings([1, 2, 3, 4, 5], cv);
   }
 
   /** Register a vkey on chain AND record it locally so attestations for that
@@ -132,6 +135,7 @@ export class Protocol {
     const note = this.mkNote(amount);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount; // the slot the registry will assign next
     const inputsHash = shieldInputsHash({
       circuitVersion: this.liveCircuitVersion(),
       commitment: note.commitment,
@@ -140,6 +144,7 @@ export class Protocol {
       amount,
       currentRoot,
       newRoot,
+      leafIndex,
     });
     const res = simnet.callPublicFn(
       POOL,
@@ -151,6 +156,7 @@ export class Protocol {
         Cl.buffer(note.metadata),
         Cl.buffer(currentRoot),
         Cl.buffer(newRoot),
+        Cl.uint(leafIndex),
         ...this.proofArgs(1, inputsHash),
       ],
       user,
@@ -167,6 +173,7 @@ export class Protocol {
     const out = this.mkNote(input.amount);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount; // the slot the registry will assign next
     const inputsHash = transferInputsHash({
       circuitVersion: this.liveCircuitVersion(),
       nullifier: input.nullifier,
@@ -175,6 +182,7 @@ export class Protocol {
       newMetadata: out.metadata,
       currentRoot,
       newRoot,
+      leafIndex,
     });
     const res = simnet.callPublicFn(
       POOL,
@@ -186,6 +194,7 @@ export class Protocol {
         Cl.buffer(out.metadata),
         Cl.buffer(currentRoot),
         Cl.buffer(newRoot),
+        Cl.uint(leafIndex),
         ...this.proofArgs(2, inputsHash),
       ],
       user,
@@ -238,6 +247,7 @@ export class Protocol {
     const out2 = this.mkNote(b);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount; // first output's slot; second is +1
     const inputsHash = splitInputsHash({
       circuitVersion: this.liveCircuitVersion(),
       nullifier: input.nullifier,
@@ -249,6 +259,7 @@ export class Protocol {
       metadata2: out2.metadata,
       currentRoot,
       newRoot,
+      leafIndex,
     });
     const res = simnet.callPublicFn(
       MANAGER,
@@ -263,6 +274,7 @@ export class Protocol {
         Cl.buffer(out2.metadata),
         Cl.buffer(currentRoot),
         Cl.buffer(newRoot),
+        Cl.uint(leafIndex),
         ...this.proofArgs(4, inputsHash),
       ],
       user,
@@ -281,6 +293,7 @@ export class Protocol {
     const out = this.mkNote(in1.amount + in2.amount);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount; // the slot the registry will assign next
     const inputsHash = mergeInputsHash({
       circuitVersion: this.liveCircuitVersion(),
       nullifier1: in1.nullifier,
@@ -290,6 +303,7 @@ export class Protocol {
       metadata: out.metadata,
       currentRoot,
       newRoot,
+      leafIndex,
     });
     const res = simnet.callPublicFn(
       MANAGER,
@@ -302,6 +316,7 @@ export class Protocol {
         Cl.buffer(out.metadata),
         Cl.buffer(currentRoot),
         Cl.buffer(newRoot),
+        Cl.uint(leafIndex),
         ...this.proofArgs(5, inputsHash),
       ],
       user,

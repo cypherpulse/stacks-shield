@@ -83,7 +83,7 @@ const DEFAULT_VERSIONS = {
   protocol: 1,
   verifier: 1,
   note: 1,
-  circuit: 1,
+  circuit: 2, // v2: the circuit version ships at 2 (binds the tree transition)
   commitment: 1,
   root: 1,
 };
@@ -151,19 +151,19 @@ describe("deployment & initial state", () => {
     expect(read("check-protocol-active")).toBeOk(Cl.bool(true));
   });
 
-  it("initializes all component versions to 1", () => {
+  it("initializes component versions (circuit at 2 for v2)", () => {
     expect(read("get-versions")).toBeTuple({
       protocol: Cl.uint(1),
       verifier: Cl.uint(1),
       note: Cl.uint(1),
-      circuit: Cl.uint(1),
+      circuit: Cl.uint(2),
       commitment: Cl.uint(1),
       root: Cl.uint(1),
     });
     expect(read("get-protocol-version")).toBeUint(1);
     expect(read("get-verifier-version")).toBeUint(1);
     expect(read("get-note-version")).toBeUint(1);
-    expect(read("get-circuit-version")).toBeUint(1);
+    expect(read("get-circuit-version")).toBeUint(2);
     expect(read("get-commitment-version")).toBeUint(1);
     expect(read("get-root-version")).toBeUint(1);
   });

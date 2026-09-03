@@ -8,11 +8,11 @@
 ;; no privacy state of its own beyond per-asset accounting and per-operation
 ;; emergency switches, and it ORCHESTRATES the shared layers:
 ;;
-;;   asset-registry        (NEW)   supported assets, metadata, limits, fee config
-;;   sip10-protocol-fees   (NEW)   token-native fee collection + per-asset treasury
-;;   sip10-zk-verifier     (NEW)   SIP-10 proof acceptance (own vkey/version namespace)
-;;   privacy-registry     (FROZEN) commitments, nullifiers, roots, tree, access control
-;;   note-manager         (FROZEN) note lifecycle
+;;   asset-registry          supported assets, metadata, limits, fee config
+;;   sip10-protocol-fees      token-native fee collection + per-asset treasury
+;;   sip10-zk-verifier        SIP-10 proof acceptance (own vkey/version namespace)
+;;   privacy-registry      commitments, nullifiers, roots, tree, access control
+;;   note-manager          note lifecycle
 ;;
 ;; The STX pool and STX circuits are untouched. This pool shares the frozen
 ;; registry's single commitment tree with STX; that is safe because a SIP-10 note
@@ -54,7 +54,7 @@
 (define-constant CONTRACT-VERSION u1)
 
 ;; This pool's proofs live in the SIP-10 verifier's circuit-version namespace.
-(define-constant SIP10-CIRCUIT-VERSION u1)
+(define-constant SIP10-CIRCUIT-VERSION u2)
 
 ;; Proof types (reused) / fee types (mirror asset-registry & sip10-protocol-fees).
 (define-constant PROOF-TYPE-SHIELD u1)
@@ -96,6 +96,7 @@
 (define-constant ERR-SWITCH-UNCHANGED (err u462))        ;; operation switch no-op
 (define-constant ERR-INSUFFICIENT-SHIELDED (err u463))   ;; withdraw exceeds this asset's shielded total
 (define-constant ERR-INVALID-OP (err u464))              ;; unknown op for the switch setter
+(define-constant ERR-LEAF-INDEX-MISMATCH (err u465))     ;; registry-assigned index != the proof-bound leaf-index
 
 ;; -----------------------------------------------------------------------------
 ;; STORAGE
@@ -206,6 +207,7 @@
     (metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -226,10 +228,11 @@
       (try! (check-current-root current-root))
       (let (
           (fee (try! (contract-call? .sip10-protocol-fees calculate-fee asset-uid FEE-TYPE-SHIELD amount)))
-          ;; CANONICAL shield public inputs: op, commitment, owner_commitment, amount, asset_id, version
+          ;; CANONICAL shield public inputs: op, commitment, owner_commitment,
+          ;; amount, old_root, new_root, leaf_index, asset_id, version
           (inputs-hash (keccak256 (concat
             (concat (concat (fe-uint PROOF-TYPE-SHIELD) commitment) owner-commitment)
-            (concat (concat (fe-uint amount) asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
+            (concat (concat (concat (concat (concat (fe-uint amount) current-root) new-root) (fe-uint leaf-index)) asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
           (bal-before (unwrap! (pool-balance token) ERR-TOKEN-BALANCE-FAILED))
         )
         (try! (contract-call? .sip10-zk-verifier verify-proof
@@ -241,11 +244,13 @@
         (if (> fee u0) (try! (contract-call? .sip10-protocol-fees collect-fee asset-uid FEE-TYPE-SHIELD fee token)) u0)
         ;; register note + commitment, advance the shared root
         (try! (contract-call? .note-manager register-note commitment owner-commitment metadata (contract-call? .privacy-registry get-note-version)))
-        (let ((leaf-index (try! (contract-call? .privacy-registry register-commitment commitment (contract-call? .privacy-registry get-commitment-version)))))
+        (let ((registered-index (try! (contract-call? .privacy-registry register-commitment commitment (contract-call? .privacy-registry get-commitment-version)))))
+          ;; the registry-assigned slot must equal the proof-bound leaf-index.
+          (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
           (try! (contract-call? .privacy-registry update-root new-root (contract-call? .privacy-registry get-root-version)))
           (map-set shielded-total asset-uid (+ (get-shielded-total asset-uid) amount))
-          (print { event: "sip10-shielded", asset-id: asset-uid, token: token-principal, commitment: commitment, leaf-index: leaf-index, amount: amount, fee: fee, new-root: new-root, height: stacks-block-height })
-          (ok leaf-index)
+          (print { event: "sip10-shielded", asset-id: asset-uid, token: token-principal, commitment: commitment, leaf-index: registered-index, amount: amount, fee: fee, new-root: new-root, height: stacks-block-height })
+          (ok registered-index)
         )
       )
     )
@@ -258,7 +263,7 @@
 ;; Consumes `nullifier` and creates `new-commitment` for a hidden recipient; no
 ;; tokens move (a flat transfer fee is paid transparently by tx-sender). Proof
 ;; binds (op, nullifier, new_commitment, new_owner_commitment, merkle_root,
-;; asset_id, version). Nullifier registration first (double-spend/replay).
+;; new_root, leaf_index, asset_id, version). Nullifier registration first (double-spend/replay).
 ;; Returns (ok leaf-index).
 (define-public (transfer
     (token <sip-010-trait>)
@@ -268,6 +273,7 @@
     (new-metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -284,20 +290,24 @@
     (let (
         (asset-fe (fe-principal (contract-of token)))
         (fee (try! (contract-call? .sip10-protocol-fees calculate-fee asset-uid FEE-TYPE-TRANSFER u0)))
-        ;; CANONICAL transfer public inputs: op, nullifier, new_commitment, new_owner_commitment, merkle_root, asset_id, version
+        ;; CANONICAL transfer public inputs: op, nullifier, new_commitment,
+        ;; new_owner_commitment, merkle_root, new_root, leaf_index, asset_id, version
         (inputs-hash (keccak256 (concat
           (concat (concat (concat (fe-uint PROOF-TYPE-TRANSFER) nullifier) new-commitment) new-owner-commitment)
-          (concat (concat current-root asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
+          (concat (concat (concat (concat current-root new-root) (fe-uint leaf-index)) asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
       )
       (try! (contract-call? .sip10-zk-verifier verify-proof
         PROOF-TYPE-TRANSFER SIP10-CIRCUIT-VERSION inputs-hash domain-id aggregation-id merkle-path agg-leaf-index))
       (if (> fee u0) (try! (contract-call? .sip10-protocol-fees collect-fee asset-uid FEE-TYPE-TRANSFER fee token)) u0)
       (try! (contract-call? .privacy-registry register-nullifier nullifier))
-      (let ((leaf-index (try! (contract-call? .privacy-registry register-commitment new-commitment (contract-call? .privacy-registry get-commitment-version)))))
+      (let ((registered-index (try! (contract-call? .privacy-registry register-commitment new-commitment (contract-call? .privacy-registry get-commitment-version)))))
+        ;; the slot the registry assigned must equal the index the proof bound its
+        ;; insertion (and new-root) to.
+        (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note new-commitment new-owner-commitment new-metadata (contract-call? .privacy-registry get-note-version)))
         (try! (contract-call? .privacy-registry update-root new-root (contract-call? .privacy-registry get-root-version)))
-        (print { event: "sip10-transferred", asset-id: asset-uid, nullifier: nullifier, new-commitment: new-commitment, leaf-index: leaf-index, fee: fee, new-root: new-root, height: stacks-block-height })
-        (ok leaf-index)
+        (print { event: "sip10-transferred", asset-id: asset-uid, nullifier: nullifier, new-commitment: new-commitment, leaf-index: registered-index, fee: fee, new-root: new-root, height: stacks-block-height })
+        (ok registered-index)
       )
     )
   )
@@ -307,8 +317,8 @@
 ;; PUBLIC -- SPLIT (1 note -> 2 notes)
 ;; =============================================================================
 ;; Proof binds (op, nullifier, commitment_1, owner_commitment_1, commitment_2,
-;; owner_commitment_2, merkle_root, asset_id, version). No tokens move; a flat
-;; split fee is paid by tx-sender. Returns (ok { leaf-1, leaf-2 }).
+;; owner_commitment_2, merkle_root, new_root, leaf_index, asset_id, version). No
+;; tokens move; a flat split fee is paid by tx-sender. Returns (ok { leaf-1, leaf-2 }).
 (define-public (split
     (token <sip-010-trait>)
     (nullifier (buff 32))
@@ -320,6 +330,7 @@
     (metadata-2 (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -335,10 +346,10 @@
     (let (
         (asset-fe (fe-principal (contract-of token)))
         (fee (try! (contract-call? .sip10-protocol-fees calculate-fee asset-uid FEE-TYPE-SPLIT u0)))
-        ;; CANONICAL split public inputs: op, nullifier, commitment_1, owner_commitment_1, commitment_2, owner_commitment_2, merkle_root, asset_id, version
+        ;; CANONICAL split public inputs: op, nullifier, commitment_1, owner_commitment_1, commitment_2, owner_commitment_2, merkle_root, new_root, leaf_index, asset_id, version
         (inputs-hash (keccak256 (concat
           (concat (concat (concat (concat (concat (fe-uint PROOF-TYPE-SPLIT) nullifier) commitment-1) owner-commitment-1) commitment-2) owner-commitment-2)
-          (concat (concat current-root asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
+          (concat (concat (concat (concat current-root new-root) (fe-uint leaf-index)) asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
       )
       (try! (contract-call? .sip10-zk-verifier verify-proof
         PROOF-TYPE-SPLIT SIP10-CIRCUIT-VERSION inputs-hash domain-id aggregation-id merkle-path agg-leaf-index))
@@ -348,6 +359,10 @@
           (leaf-1 (try! (contract-call? .privacy-registry register-commitment commitment-1 (contract-call? .privacy-registry get-commitment-version))))
           (leaf-2 (try! (contract-call? .privacy-registry register-commitment commitment-2 (contract-call? .privacy-registry get-commitment-version))))
         )
+        ;; the two registry-assigned slots must equal the proof-bound indices:
+        ;; the first output at leaf-index, the second at leaf-index + 1.
+        (asserts! (is-eq leaf-1 leaf-index) ERR-LEAF-INDEX-MISMATCH)
+        (asserts! (is-eq leaf-2 (+ leaf-index u1)) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note commitment-1 owner-commitment-1 metadata-1 (contract-call? .privacy-registry get-note-version)))
         (try! (contract-call? .note-manager register-note commitment-2 owner-commitment-2 metadata-2 (contract-call? .privacy-registry get-note-version)))
         (try! (contract-call? .privacy-registry update-root new-root (contract-call? .privacy-registry get-root-version)))
@@ -362,8 +377,8 @@
 ;; PUBLIC -- MERGE (2 notes -> 1 note)
 ;; =============================================================================
 ;; Proof binds (op, nullifier_1, nullifier_2, commitment, owner_commitment,
-;; merkle_root, asset_id, version). No tokens move; a flat merge fee is paid by
-;; tx-sender. Returns (ok leaf-index).
+;; merkle_root, new_root, leaf_index, asset_id, version). No tokens move; a flat
+;; merge fee is paid by tx-sender. Returns (ok leaf-index).
 ;; Named `merge-notes` because `merge` is a Clarity built-in (tuple merge).
 (define-public (merge-notes
     (token <sip-010-trait>)
@@ -374,6 +389,7 @@
     (metadata (buff 32))
     (current-root (buff 32))
     (new-root (buff 32))
+    (leaf-index uint)
     (domain-id uint)
     (aggregation-id uint)
     (merkle-path (list 32 (buff 32)))
@@ -389,21 +405,23 @@
     (let (
         (asset-fe (fe-principal (contract-of token)))
         (fee (try! (contract-call? .sip10-protocol-fees calculate-fee asset-uid FEE-TYPE-MERGE u0)))
-        ;; CANONICAL merge public inputs: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, asset_id, version
+        ;; CANONICAL merge public inputs: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, new_root, leaf_index, asset_id, version
         (inputs-hash (keccak256 (concat
           (concat (concat (concat (concat (fe-uint PROOF-TYPE-MERGE) nullifier-1) nullifier-2) commitment) owner-commitment)
-          (concat (concat current-root asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
+          (concat (concat (concat (concat current-root new-root) (fe-uint leaf-index)) asset-fe) (fe-uint SIP10-CIRCUIT-VERSION)))))
       )
       (try! (contract-call? .sip10-zk-verifier verify-proof
         PROOF-TYPE-MERGE SIP10-CIRCUIT-VERSION inputs-hash domain-id aggregation-id merkle-path agg-leaf-index))
       (if (> fee u0) (try! (contract-call? .sip10-protocol-fees collect-fee asset-uid FEE-TYPE-MERGE fee token)) u0)
       (try! (contract-call? .privacy-registry register-nullifier nullifier-1))
       (try! (contract-call? .privacy-registry register-nullifier nullifier-2))
-      (let ((leaf-index (try! (contract-call? .privacy-registry register-commitment commitment (contract-call? .privacy-registry get-commitment-version)))))
+      (let ((registered-index (try! (contract-call? .privacy-registry register-commitment commitment (contract-call? .privacy-registry get-commitment-version)))))
+        ;; the registry-assigned slot must equal the proof-bound leaf-index.
+        (asserts! (is-eq registered-index leaf-index) ERR-LEAF-INDEX-MISMATCH)
         (try! (contract-call? .note-manager register-note commitment owner-commitment metadata (contract-call? .privacy-registry get-note-version)))
         (try! (contract-call? .privacy-registry update-root new-root (contract-call? .privacy-registry get-root-version)))
-        (print { event: "sip10-merged", asset-id: asset-uid, nullifier-1: nullifier-1, nullifier-2: nullifier-2, commitment: commitment, leaf-index: leaf-index, fee: fee, new-root: new-root, height: stacks-block-height })
-        (ok leaf-index)
+        (print { event: "sip10-merged", asset-id: asset-uid, nullifier-1: nullifier-1, nullifier-2: nullifier-2, commitment: commitment, leaf-index: registered-index, fee: fee, new-root: new-root, height: stacks-block-height })
+        (ok registered-index)
       )
     )
   )

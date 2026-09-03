@@ -62,7 +62,7 @@
 (define-constant PROTOCOL-VERSION u1)
 (define-constant VERIFIER-VERSION u1)
 (define-constant NOTE-VERSION u1)
-(define-constant CIRCUIT-VERSION u1)
+(define-constant CIRCUIT-VERSION u2)
 (define-constant COMMITMENT-VERSION u1)
 (define-constant ROOT-VERSION u1)
 

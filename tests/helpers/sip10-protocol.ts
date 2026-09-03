@@ -34,7 +34,7 @@ export const POOL = "sip10-pool";
 
 export const GENESIS_ROOT = bytes32(1, 0x47);
 export const PROOF_LEN = 448;
-export const CIRCUIT_VERSION = 1;
+export const CIRCUIT_VERSION = 2;
 export const VKEY = { 1: bytes32(1, 0x6a), 2: bytes32(2, 0x6a), 3: bytes32(3, 0x6a), 4: bytes32(4, 0x6a), 5: bytes32(5, 0x6a) } as const;
 
 /** A registered test asset. */
@@ -102,6 +102,9 @@ export class Sip10Protocol {
         [Cl.uint(t), Cl.uint(CIRCUIT_VERSION), Cl.buffer(VKEY[t]), Cl.uint(PROOF_LEN)], this.deployer);
     }
     this.configureBindings([1, 2, 3, 4, 5]);
+    // The verifier's active circuit-version defaults to 1; advance it to match the
+    // vkeys/bindings just registered (what the pool passes to verify-proof).
+    simnet.callPublicFn(VERIFIER, "set-circuit-version", [Cl.uint(CIRCUIT_VERSION)], this.deployer);
     simnet.callPublicFn(VERIFIER, "add-relayer", [Cl.principal(this.deployer)], this.deployer);
     simnet.callPublicFn(VERIFIER, "set-authorized-pool", [Cl.contractPrincipal(this.deployer, POOL)], this.deployer);
   }
@@ -145,14 +148,16 @@ export class Sip10Protocol {
     const note = this.mkNote(amount, asset);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount;
     const inputsHash = shieldPublicInputsSip10({
       commitment: note.commitment, ownerCommitment: note.ownerCommitment,
-      amount: BigInt(amount), token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
+      amount: BigInt(amount), oldRoot: currentRoot, newRoot, leafIndex,
+      token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
     });
     const res = simnet.callPublicFn(POOL, "shield", [
       Cl.contractPrincipal(this.deployer, asset),
       Cl.uint(amount), Cl.buffer(note.commitment), Cl.buffer(note.ownerCommitment),
-      Cl.buffer(note.metadata), Cl.buffer(currentRoot), Cl.buffer(newRoot),
+      Cl.buffer(note.metadata), Cl.buffer(currentRoot), Cl.buffer(newRoot), Cl.uint(leafIndex),
       ...this.proofArgs(1, inputsHash),
     ], user);
     if (res.result.type === "ok") { note.leafIndex = this.assignLeaf(); this.root = newRoot; }
@@ -164,14 +169,15 @@ export class Sip10Protocol {
     const out = this.mkNote(input.amount, asset);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount;
     const inputsHash = transferPublicInputsSip10({
       nullifier: input.nullifier, newCommitment: out.commitment, newOwnerCommitment: out.ownerCommitment,
-      merkleRoot: currentRoot, token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
+      merkleRoot: currentRoot, newRoot, leafIndex, token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
     });
     const res = simnet.callPublicFn(POOL, "transfer", [
       Cl.contractPrincipal(this.deployer, asset),
       Cl.buffer(input.nullifier), Cl.buffer(out.commitment), Cl.buffer(out.ownerCommitment),
-      Cl.buffer(out.metadata), Cl.buffer(currentRoot), Cl.buffer(newRoot),
+      Cl.buffer(out.metadata), Cl.buffer(currentRoot), Cl.buffer(newRoot), Cl.uint(leafIndex),
       ...this.proofArgs(2, inputsHash),
     ], user);
     if (res.result.type === "ok") { input.spent = true; out.leafIndex = this.assignLeaf(); this.root = newRoot; }
@@ -184,17 +190,18 @@ export class Sip10Protocol {
     const out2 = this.mkNote(b, asset);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount;
     const inputsHash = splitPublicInputsSip10({
       nullifier: input.nullifier, commitment1: out1.commitment, ownerCommitment1: out1.ownerCommitment,
       commitment2: out2.commitment, ownerCommitment2: out2.ownerCommitment,
-      merkleRoot: currentRoot, token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
+      merkleRoot: currentRoot, newRoot, leafIndex, token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
     });
     const res = simnet.callPublicFn(POOL, "split", [
       Cl.contractPrincipal(this.deployer, asset),
       Cl.buffer(input.nullifier),
       Cl.buffer(out1.commitment), Cl.buffer(out1.ownerCommitment), Cl.buffer(out1.metadata),
       Cl.buffer(out2.commitment), Cl.buffer(out2.ownerCommitment), Cl.buffer(out2.metadata),
-      Cl.buffer(currentRoot), Cl.buffer(newRoot),
+      Cl.buffer(currentRoot), Cl.buffer(newRoot), Cl.uint(leafIndex),
       ...this.proofArgs(4, inputsHash),
     ], user);
     if (res.result.type === "ok") { input.spent = true; out1.leafIndex = this.assignLeaf(); out2.leafIndex = this.assignLeaf(); this.root = newRoot; }
@@ -206,16 +213,17 @@ export class Sip10Protocol {
     const out = this.mkNote(in1.amount + in2.amount, asset);
     const currentRoot = this.root;
     const newRoot = this.nextRoot();
+    const leafIndex = this.leafCount;
     const inputsHash = mergePublicInputsSip10({
       nullifier1: in1.nullifier, nullifier2: in2.nullifier, commitment: out.commitment,
-      ownerCommitment: out.ownerCommitment, merkleRoot: currentRoot,
+      ownerCommitment: out.ownerCommitment, merkleRoot: currentRoot, newRoot, leafIndex,
       token: this.tokenPrincipal(asset), circuitVersion: CIRCUIT_VERSION,
     });
     const res = simnet.callPublicFn(POOL, "merge-notes", [
       Cl.contractPrincipal(this.deployer, asset),
       Cl.buffer(in1.nullifier), Cl.buffer(in2.nullifier), Cl.buffer(out.commitment),
       Cl.buffer(out.ownerCommitment), Cl.buffer(out.metadata),
-      Cl.buffer(currentRoot), Cl.buffer(newRoot),
+      Cl.buffer(currentRoot), Cl.buffer(newRoot), Cl.uint(leafIndex),
       ...this.proofArgs(5, inputsHash),
     ], user);
     if (res.result.type === "ok") { in1.spent = true; in2.spent = true; out.leafIndex = this.assignLeaf(); this.root = newRoot; }

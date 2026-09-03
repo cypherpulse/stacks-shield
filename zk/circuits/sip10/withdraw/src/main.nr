@@ -22,7 +22,7 @@ fn main(
     merkle_siblings: [Field; TREE_DEPTH],
 ) {
     assert(op == 3, "wrong op for withdraw circuit");
-    assert(circuit_version == 1, "unsupported circuit version");
+    assert(circuit_version == 2, "unsupported circuit version");
     assert_asset_bound(asset_id);
 
     // The note commitment stays PRIVATE and asset-bound; membership is proven

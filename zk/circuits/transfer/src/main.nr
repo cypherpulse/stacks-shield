@@ -1,10 +1,15 @@
 // transfer-note.nr -- STX Shield transfer circuit (1 note -> 1 note, private).
 // Proves ownership + membership of the input, correct nullifier, value
-// conservation into a single output for the hidden recipient.
+// conservation into a single output for the hidden recipient, and the tree
+// transition: new_commitment is appended at leaf_index (empty under merkle_root)
+// to yield new_root.
 //
-// Public inputs: op=2, nullifier, new_commitment,
-//                new_owner_commitment, merkle_root, circuit_version.
-use stx_shield_lib::{Note, compute_nullifier, assert_merkle_membership, assert_owner, TREE_DEPTH};
+// Public inputs: op=2, nullifier, new_commitment, new_owner_commitment,
+//                merkle_root, new_root, leaf_index, circuit_version.
+use stx_shield_lib::{
+    Note, compute_nullifier, assert_merkle_membership, assert_owner,
+    assert_insertion, assert_index_bits, TREE_DEPTH,
+};
 
 fn main(
     op: pub Field,
@@ -12,15 +17,19 @@ fn main(
     new_commitment: pub Field,
     new_owner_commitment: pub Field,
     merkle_root: pub Field,
+    new_root: pub Field,
+    leaf_index: pub Field,
     circuit_version: pub Field,
     input: Note,
     owner_sk: Field,
     merkle_index: [bool; TREE_DEPTH],
     merkle_siblings: [Field; TREE_DEPTH],
+    insertion_index_bits: [bool; TREE_DEPTH],
+    insertion_siblings: [Field; TREE_DEPTH],
     output: Note,
 ) {
     assert(op == 2, "wrong op for transfer circuit");
-    assert(circuit_version == 1, "unsupported circuit version");
+    assert(circuit_version == 2, "unsupported circuit version");
 
     // The input commitment is PRIVATE: never published, so no
     // observer can link this spend to the leaf it consumes. Membership is
@@ -35,4 +44,15 @@ fn main(
     output.amount.assert_max_bit_size::<64>();
     assert(output.commitment() == new_commitment, "output commitment mismatch");
     assert(output.owner_commitment() == new_owner_commitment, "output owner mismatch");
+
+    // Append new_commitment at leaf_index (empty under merkle_root) to yield
+    // new_root, from the same siblings.
+    assert_index_bits(leaf_index, insertion_index_bits);
+    assert_insertion(
+        new_commitment,
+        insertion_index_bits,
+        insertion_siblings,
+        merkle_root, // the append's old_root == the membership root
+        new_root,
+    );
 }

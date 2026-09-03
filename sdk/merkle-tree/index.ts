@@ -34,6 +34,20 @@ export interface MerkleProof {
   root: Bytes32;
 }
 
+/** Witness proving the append of a commitment at the next free slot (C-1 fix). */
+export interface InsertionWitness {
+  /** The slot the commitment is appended at (= tree size before insert). */
+  index: number;
+  indexBits: boolean[];
+  siblings: Bytes32[];
+  /** The empty-leaf constant the slot held before insertion (32 zero bytes). */
+  emptyLeaf: Bytes32;
+  /** Root with the slot empty (equals the current tree root). */
+  oldRoot: Bytes32;
+  /** Root after inserting the commitment at `index` (same siblings). */
+  newRoot: Bytes32;
+}
+
 const ZERO = new Uint8Array(32);
 
 /**
@@ -109,6 +123,47 @@ export class CommitmentTree {
       i >>= 1;
       this.set(level + 1, i, this.hash(l, r));
     }
+  }
+
+  /**
+   * Witness for proving the APPEND of `commitment` at the next free slot — the
+   * fix for C-1 (the circuit binds the tree transition instead of trusting a
+   * caller-supplied new-root). Returns, for `index = count`:
+   *   - `oldRoot`: the current root (that slot holds the empty leaf), and
+   *   - `newRoot`: the root after inserting `commitment` at `index`,
+   * both computed with the SAME `siblings`. The circuit asserts
+   *   root(EMPTY_LEAF, siblings, indexBits) == oldRoot   AND
+   *   root(commitment, siblings, indexBits) == newRoot
+   * so a forged newRoot cannot verify. Does NOT mutate the tree.
+   */
+  insertionWitness(commitment: Bytes32): InsertionWitness {
+    if (this.count >= MAX_LEAVES) throw new Error("commitment tree is full");
+    const index = this.count; // the next free (currently empty) slot
+    const siblings: Bytes32[] = [];
+    const indexBits: boolean[] = [];
+    let i = index;
+    for (let level = 0; level < this.depth; level++) {
+      siblings.push(this.get(level, i ^ 1)); // empty subtrees collapse to zeros
+      indexBits.push((i & 1) === 1);
+      i >>= 1;
+    }
+    const fold = (leaf: Bytes32): Bytes32 => {
+      let node = leaf;
+      for (let level = 0; level < this.depth; level++) {
+        const sibling = siblings[level]!;
+        const [l, r] = indexBits[level] ? [sibling, node] : [node, sibling];
+        node = this.hash(l, r);
+      }
+      return node;
+    };
+    return {
+      index,
+      indexBits,
+      siblings,
+      emptyLeaf: ZERO,
+      oldRoot: fold(ZERO), // == this.root, since slot `index` is empty
+      newRoot: fold(commitment),
+    };
   }
 
   /** The membership proof for a leaf index. Feeds straight into the circuit. */

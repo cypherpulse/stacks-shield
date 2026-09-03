@@ -57,6 +57,16 @@ const inclusionArgs = (r: RelayRequest): ClarityValue[] => [
   Cl.uint(r.inclusion.leafIndex),
 ];
 
+/** The proof-bound leaf index a leaf-adding op asserts against the slot the
+ *  registry assigns (bound after new-root). Both native STX and SIP-10 pools are
+ *  v2 and require it. */
+const leafIndexArg = (leafIndex: number | undefined): ClarityValue[] => {
+  if (leafIndex === undefined) {
+    throw new RelayError("missing_leaf_index", "leaf-adding operations require leafIndex", 400);
+  }
+  return [Cl.uint(leafIndex)];
+};
+
 /** Maps a relay request onto its contract call. The ONLY place request fields
  *  become transaction arguments — so the mapping is auditable in one spot, and
  *  any drift from the contract signatures shows up here.
@@ -87,6 +97,7 @@ export const buildCall = (
           buf(t.newMetadata),
           buf(t.currentRoot),
           buf(t.newRoot),
+          ...leafIndexArg(t.leafIndex),
           ...inclusionArgs(r),
         ],
       };
@@ -122,6 +133,7 @@ export const buildCall = (
           buf(s.metadata2),
           buf(s.currentRoot),
           buf(s.newRoot),
+          ...leafIndexArg(s.leafIndex),
           ...inclusionArgs(r),
         ],
       };
@@ -140,6 +152,7 @@ export const buildCall = (
           buf(m.metadata),
           buf(m.currentRoot),
           buf(m.newRoot),
+          ...leafIndexArg(m.leafIndex),
           ...inclusionArgs(r),
         ],
       };

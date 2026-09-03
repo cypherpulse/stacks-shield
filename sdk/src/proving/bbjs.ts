@@ -19,7 +19,7 @@ import { ProofGenerationError } from "../errors/index.js";
 import type {
   ProofEngine, OwnerKey, RawProof,
   ShieldWitness, TransferWitness, SplitWitness, MergeWitness, WithdrawWitness,
-  NoteWitness, MembershipWitness,
+  NoteWitness, MembershipWitness, InsertionWitness,
 } from "./engine.js";
 
 export type NativeCircuit = "shield" | "transfer" | "split" | "merge" | "withdraw";
@@ -49,31 +49,43 @@ const sib = (m: MembershipWitness) => m.siblings.map(f);
 // ---- circuit selection + input building (pure; asset-aware) ----------------
 // A witness with `assetField` set proves against the SIP-10 circuit family and
 // binds asset_id as a public input (canonically just before circuit_version, as
-// the circuits declare it). Otherwise it uses the native STX circuits, unchanged.
-// Noir maps inputs by NAME, so the extra key is inert for the native path.
+// the circuits declare it). Otherwise it uses the native STX circuits. Both
+// families are circuit-version 2 and bind the tree insertion identically; the
+// ONLY per-family difference is the asset_id public input. Noir maps inputs by
+// NAME, so an unused key would be inert either way.
 const pick = (base: NativeCircuit, assetField?: bigint): CircuitName =>
   assetField ? (`sip10-${base}` as Sip10Circuit) : base;
 const assetIn = (assetField?: bigint) => (assetField ? { asset_id: f(assetField) } : {});
+// Both circuit families are version 2 (they bind the tree insertion).
+const CIRCUIT_VERSION = "2";
+// The single-append inputs (new_root, leaf_index, and the insertion witness),
+// declared by every leaf-adding circuit in BOTH families.
+const insIn = (i: InsertionWitness) => ({
+  new_root: f(i.newRoot),
+  leaf_index: f(BigInt(i.leafIndex)),
+  insertion_index_bits: i.indexBits,
+  insertion_siblings: i.siblings.map(f),
+});
 
 export const shieldInputs = (w: ShieldWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
   circuit: pick("shield", w.assetField),
-  inputs: { op: "1", commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), amount: f(w.note.amount), ...assetIn(w.assetField), circuit_version: "1", note: noteInput(w.note) },
+  inputs: { op: "1", commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), amount: f(w.note.amount), old_root: f(w.insertion.oldRoot), ...insIn(w.insertion), ...assetIn(w.assetField), circuit_version: CIRCUIT_VERSION, note: noteInput(w.note) },
 });
 export const transferInputs = (w: TransferWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
   circuit: pick("transfer", w.assetField),
-  inputs: { op: "2", nullifier: f(w.nullifier), new_commitment: f(w.newCommitment), new_owner_commitment: f(w.newOwnerCommitment), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), output: noteInput(w.output) },
+  inputs: { op: "2", nullifier: f(w.nullifier), new_commitment: f(w.newCommitment), new_owner_commitment: f(w.newOwnerCommitment), merkle_root: f(w.membership.merkleRoot), ...insIn(w.insertion), ...assetIn(w.assetField), circuit_version: CIRCUIT_VERSION, owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), output: noteInput(w.output) },
 });
 export const splitInputs = (w: SplitWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
   circuit: pick("split", w.assetField),
-  inputs: { op: "4", nullifier: f(w.nullifier), commitment_1: f(w.commitment1), owner_commitment_1: f(w.ownerCommitment1), commitment_2: f(w.commitment2), owner_commitment_2: f(w.ownerCommitment2), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), out_1: noteInput(w.out1), out_2: noteInput(w.out2) },
+  inputs: { op: "4", nullifier: f(w.nullifier), commitment_1: f(w.commitment1), owner_commitment_1: f(w.ownerCommitment1), commitment_2: f(w.commitment2), owner_commitment_2: f(w.ownerCommitment2), merkle_root: f(w.membership.merkleRoot), new_root: f(w.insertion2.newRoot), leaf_index: f(BigInt(w.insertion1.leafIndex)), insertion_index_bits_1: w.insertion1.indexBits, insertion_siblings_1: w.insertion1.siblings.map(f), insertion_index_bits_2: w.insertion2.indexBits, insertion_siblings_2: w.insertion2.siblings.map(f), ...assetIn(w.assetField), circuit_version: CIRCUIT_VERSION, owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input), out_1: noteInput(w.out1), out_2: noteInput(w.out2) },
 });
 export const mergeInputs = (w: MergeWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
   circuit: pick("merge", w.assetField),
-  inputs: { op: "5", nullifier_1: f(w.nullifier1), nullifier_2: f(w.nullifier2), commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), merkle_root: f(w.membership1.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk_1: f(w.ownerSk1), merkle_index_1: idx(w.membership1), merkle_siblings_1: sib(w.membership1), owner_sk_2: f(w.ownerSk2), merkle_index_2: idx(w.membership2), merkle_siblings_2: sib(w.membership2), input_1: noteInput(w.input1), input_2: noteInput(w.input2), output: noteInput(w.output) },
+  inputs: { op: "5", nullifier_1: f(w.nullifier1), nullifier_2: f(w.nullifier2), commitment: f(w.commitment), owner_commitment: f(w.ownerCommitment), merkle_root: f(w.membership1.merkleRoot), ...insIn(w.insertion), ...assetIn(w.assetField), circuit_version: CIRCUIT_VERSION, owner_sk_1: f(w.ownerSk1), merkle_index_1: idx(w.membership1), merkle_siblings_1: sib(w.membership1), owner_sk_2: f(w.ownerSk2), merkle_index_2: idx(w.membership2), merkle_siblings_2: sib(w.membership2), input_1: noteInput(w.input1), input_2: noteInput(w.input2), output: noteInput(w.output) },
 });
 export const withdrawInputs = (w: WithdrawWitness): { circuit: CircuitName; inputs: Record<string, unknown> } => ({
   circuit: pick("withdraw", w.assetField),
-  inputs: { op: "3", nullifier: f(w.nullifier), amount: f(w.amount), recipient_hash: f(w.recipientHash), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: "1", owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input) },
+  inputs: { op: "3", nullifier: f(w.nullifier), amount: f(w.amount), recipient_hash: f(w.recipientHash), merkle_root: f(w.membership.merkleRoot), ...assetIn(w.assetField), circuit_version: CIRCUIT_VERSION, owner_sk: f(w.ownerSk), merkle_index: idx(w.membership), merkle_siblings: sib(w.membership), input: noteInput(w.input) },
 });
 
 export const createBbjsEngine = (opts: BbjsEngineOptions): ProofEngine => {

@@ -12,11 +12,11 @@
 //
 // in the circuit's DECLARATION ORDER.
 //
-// CORRECTNESS RULE (the one that was previously violated):
-//   Never hash a value the circuit does not take as a public input, and never
-//   omit one it does. `metadata`, `newRoot`, and note ids are NOT circuit
-//   inputs — they are contract-level checks. Including them produced a hash
-//   no proof could ever match.
+// CORRECTNESS RULE:
+//   Hash exactly the circuit's public inputs, in declaration order — no more, no
+//   less. The tree transition IS part of the statement: every leaf-adding op
+//   binds `old_root`/`merkle_root`, `new_root`, and `leaf_index`. `metadata` and
+//   note ids are NOT circuit inputs — they stay contract-level checks.
 //
 // Mirrors `fe-uint` / `fe-principal` and the per-operation constructions in
 // privacy-pool.clar and split-merge-manager.clar.
@@ -84,11 +84,14 @@ const hash = (fields: Bytes32[]): Bytes32 => keccak256(concatAll(fields));
 // One function per circuit. The field list IS the specification.
 // ---------------------------------------------------------------------------
 
-/** shield: op, commitment, owner_commitment, amount, circuit_version */
+/** shield: op, commitment, owner_commitment, amount, old_root, new_root, leaf_index, circuit_version */
 export const shieldPublicInputs = (o: {
   commitment: Bytes32;
   ownerCommitment: Bytes32;
   amount: bigint;
+  oldRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   circuitVersion: number;
 }): Bytes32 =>
   hash([
@@ -96,15 +99,20 @@ export const shieldPublicInputs = (o: {
     fe32(o.commitment),
     fe32(o.ownerCommitment),
     feUint(o.amount),
+    fe32(o.oldRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ]);
 
-/** transfer: op, nullifier, new_commitment, new_owner_commitment, merkle_root, circuit_version */
+/** transfer: op, nullifier, new_commitment, new_owner_commitment, merkle_root, new_root, leaf_index, circuit_version */
 export const transferPublicInputs = (o: {
   nullifier: Bytes32;
   newCommitment: Bytes32;
   newOwnerCommitment: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   circuitVersion: number;
 }): Bytes32 =>
   hash([
@@ -113,6 +121,8 @@ export const transferPublicInputs = (o: {
     fe32(o.newCommitment),
     fe32(o.newOwnerCommitment),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ]);
 
@@ -133,7 +143,7 @@ export const withdrawPublicInputs = (o: {
     feUint(o.circuitVersion),
   ]);
 
-/** split: op, nullifier, commitment_1, owner_commitment_1, commitment_2, owner_commitment_2, merkle_root, circuit_version */
+/** split: op, nullifier, commitment_1, owner_commitment_1, commitment_2, owner_commitment_2, merkle_root, new_root, leaf_index, circuit_version */
 export const splitPublicInputs = (o: {
   nullifier: Bytes32;
   commitment1: Bytes32;
@@ -141,6 +151,8 @@ export const splitPublicInputs = (o: {
   commitment2: Bytes32;
   ownerCommitment2: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   circuitVersion: number;
 }): Bytes32 =>
   hash([
@@ -151,16 +163,20 @@ export const splitPublicInputs = (o: {
     fe32(o.commitment2),
     fe32(o.ownerCommitment2),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ]);
 
-/** merge: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, circuit_version */
+/** merge: op, nullifier_1, nullifier_2, commitment, owner_commitment, merkle_root, new_root, leaf_index, circuit_version */
 export const mergePublicInputs = (o: {
   nullifier1: Bytes32;
   nullifier2: Bytes32;
   commitment: Bytes32;
   ownerCommitment: Bytes32;
   merkleRoot: Bytes32;
+  newRoot: Bytes32;
+  leafIndex: number | bigint;
   circuitVersion: number;
 }): Bytes32 =>
   hash([
@@ -170,6 +186,8 @@ export const mergePublicInputs = (o: {
     fe32(o.commitment),
     fe32(o.ownerCommitment),
     fe32(o.merkleRoot),
+    fe32(o.newRoot),
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ]);
 
@@ -185,6 +203,9 @@ export const publicInputVector = {
     o.commitment,
     o.ownerCommitment,
     feUint(o.amount),
+    o.oldRoot,
+    o.newRoot,
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ],
   transfer: (o: Parameters<typeof transferPublicInputs>[0]): Bytes32[] => [
@@ -193,6 +214,8 @@ export const publicInputVector = {
     o.newCommitment,
     o.newOwnerCommitment,
     o.merkleRoot,
+    o.newRoot,
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ],
   withdraw: (o: Parameters<typeof withdrawPublicInputs>[0]): Bytes32[] => [
@@ -211,6 +234,8 @@ export const publicInputVector = {
     o.commitment2,
     o.ownerCommitment2,
     o.merkleRoot,
+    o.newRoot,
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ],
   merge: (o: Parameters<typeof mergePublicInputs>[0]): Bytes32[] => [
@@ -220,6 +245,8 @@ export const publicInputVector = {
     o.commitment,
     o.ownerCommitment,
     o.merkleRoot,
+    o.newRoot,
+    feUint(o.leafIndex),
     feUint(o.circuitVersion),
   ],
 } as const;

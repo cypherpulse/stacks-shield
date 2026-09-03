@@ -15,18 +15,20 @@ import {
 } from "../../sdk/public-inputs/index.js";
 
 /*
-  CANONICAL PUBLIC-INPUT ENCODING — correctness gate.
+  CANONICAL PUBLIC-INPUT ENCODING — correctness gate (v2).
 
   Five systems must commit to byte-identical data:
 
       circuits == privacy-pool == split-merge-manager == SDK == zkVerify
 
   The encoding is: keccak256 over the circuit's public-input field elements,
-  each 32 bytes big-endian, in DECLARATION ORDER, and nothing else.
+  each 32 bytes big-endian, in DECLARATION ORDER, and nothing else. In v2 every
+  leaf-adding op additionally binds the tree transition: `old_root`/`merkle_root`,
+  `new_root`, and `leaf_index`. `metadata` remains a contract-level check only.
 
   These tests drive the real contracts and compare against an independent SDK
-  implementation. The previous construction (sha256 over a Clarity tuple that
-  also contained metadata and roots) is exactly what these catch.
+  implementation: the contract accepts an operation only if the leaf it derives
+  is in a published aggregation, so acceptance PROVES it hashed the same bytes.
 */
 
 const REGISTRY = "privacy-registry";
@@ -42,9 +44,12 @@ const recipient = accounts.get("wallet_8")!;
 
 const ONE_STX = 1_000_000;
 const PROOF_LEN = 7872;
-const CIRCUIT_VERSION = 1;
+// v2: the registry ships at circuit version 2 (binds the tree transition).
+const CIRCUIT_VERSION = 2;
 const GENESIS_ROOT = bytes32(1, 0x47);
 const VKEY = (t: number) => bytes32(t, 0x5a);
+// Deterministic distinct roots for the tests.
+const R = (n: number) => bytes32(n, 0x52);
 
 /** The contract accepts an operation only if the leaf it derives is in a
  *  published aggregation. We publish a single-leaf tree containing the leaf
@@ -104,6 +109,37 @@ const wire = () => {
   }
 };
 
+/** Seed one on-chain note by genuinely shielding it. Returns the new live root.
+ *  `leafIndex` is the slot it lands at; `oldRoot` must be the live root. */
+const seedShield = (n: number, amount: number, oldRoot: Uint8Array, newRoot: Uint8Array, leafIndex: number) => {
+  const seed = shieldPublicInputs({
+    commitment: bytes32(n, 0x3c),
+    ownerCommitment: bytes32(n, 0x4f),
+    amount: BigInt(amount),
+    oldRoot,
+    newRoot,
+    leafIndex,
+    circuitVersion: CIRCUIT_VERSION,
+  });
+  const res = simnet.callPublicFn(
+    POOL,
+    "shield",
+    [
+      Cl.uint(amount),
+      Cl.buffer(bytes32(n, 0x3c)),
+      Cl.buffer(bytes32(n, 0x4f)),
+      Cl.buffer(bytes32(n, 0x4d)),
+      Cl.buffer(oldRoot),
+      Cl.buffer(newRoot),
+      Cl.uint(leafIndex),
+      ...publishFor(1, seed),
+    ],
+    alice,
+  );
+  expect(res.result.type).toBe("ok");
+  return newRoot;
+};
+
 // ===========================================================================
 // Field-element encoding primitives
 // ===========================================================================
@@ -116,8 +152,6 @@ describe("field element encoding", () => {
   });
 
   it("matches the byte layout barretenberg actually emits", () => {
-    // Observed from a real `public_inputs` file: op=1 and amount=1000000
-    // appear as 32-byte big-endian values.
     expect(Buffer.from(feUint(1)).toString("hex")).toBe(
       "0000000000000000000000000000000000000000000000000000000000000001",
     );
@@ -129,7 +163,6 @@ describe("field element encoding", () => {
   it("bounds a principal below the BN254 modulus", () => {
     const fe = fePrincipal(recipient);
     expect(fe).toHaveLength(32);
-    // top byte zeroed => value < 2^248 < p, so it is always a valid field element
     expect(fe[0]).toBe(0);
   });
 
@@ -159,6 +192,9 @@ describe("contract == SDK public-input hash", () => {
       commitment,
       ownerCommitment: owner,
       amount: BigInt(amount),
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
       circuitVersion: CIRCUIT_VERSION,
     });
 
@@ -171,46 +207,27 @@ describe("contract == SDK public-input hash", () => {
         Cl.buffer(owner),
         Cl.buffer(bytes32(1, 0x4d)), // metadata: NOT part of the binding
         Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)), // new root: NOT part of the binding
+        Cl.buffer(R(2)),
+        Cl.uint(0),
         ...publishFor(1, expected),
       ],
       alice,
     );
-    // acceptance proves the contract derived exactly `expected`
     expect(res.result.type).toBe("ok");
   });
 
   it("transfer", () => {
     wire();
-    // seed a note
-    const c0 = bytes32(1, 0x3c);
-    const seed = shieldPublicInputs({
-      commitment: c0,
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: BigInt(10 * ONE_STX),
-      circuitVersion: CIRCUIT_VERSION,
-    });
-    simnet.callPublicFn(
-      POOL,
-      "shield",
-      [
-        Cl.uint(10 * ONE_STX),
-        Cl.buffer(c0),
-        Cl.buffer(bytes32(1, 0x4f)),
-        Cl.buffer(bytes32(1, 0x4d)),
-        Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
-        ...publishFor(1, seed),
-      ],
-      alice,
-    );
+    seedShield(1, 10 * ONE_STX, GENESIS_ROOT, R(2), 0);
 
-    const currentRoot = bytes32(2, 0x52);
+    const currentRoot = R(2);
     const expected = transferPublicInputs({
       nullifier: bytes32(1, 0x4e),
       newCommitment: bytes32(2, 0x3c),
       newOwnerCommitment: bytes32(2, 0x4f),
       merkleRoot: currentRoot,
+      newRoot: R(3),
+      leafIndex: 1,
       circuitVersion: CIRCUIT_VERSION,
     });
 
@@ -223,7 +240,8 @@ describe("contract == SDK public-input hash", () => {
         Cl.buffer(bytes32(2, 0x4f)),
         Cl.buffer(bytes32(2, 0x4d)), // metadata: not bound
         Cl.buffer(currentRoot),
-        Cl.buffer(bytes32(3, 0x52)), // new root: not bound
+        Cl.buffer(R(3)),
+        Cl.uint(1),
         ...publishFor(2, expected),
       ],
       alice,
@@ -233,29 +251,9 @@ describe("contract == SDK public-input hash", () => {
 
   it("withdraw", () => {
     wire();
-    const c0 = bytes32(1, 0x3c);
-    const seed = shieldPublicInputs({
-      commitment: c0,
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: BigInt(50 * ONE_STX),
-      circuitVersion: CIRCUIT_VERSION,
-    });
-    simnet.callPublicFn(
-      POOL,
-      "shield",
-      [
-        Cl.uint(50 * ONE_STX),
-        Cl.buffer(c0),
-        Cl.buffer(bytes32(1, 0x4f)),
-        Cl.buffer(bytes32(1, 0x4d)),
-        Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
-        ...publishFor(1, seed),
-      ],
-      alice,
-    );
+    seedShield(1, 50 * ONE_STX, GENESIS_ROOT, R(2), 0);
 
-    const root = bytes32(2, 0x52);
+    const root = R(2);
     const expected = withdrawPublicInputs({
       nullifier: bytes32(1, 0x4e),
       amount: BigInt(10 * ONE_STX),
@@ -281,29 +279,9 @@ describe("contract == SDK public-input hash", () => {
 
   it("split", () => {
     wire();
-    const c0 = bytes32(1, 0x3c);
-    const seed = shieldPublicInputs({
-      commitment: c0,
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: BigInt(100 * ONE_STX),
-      circuitVersion: CIRCUIT_VERSION,
-    });
-    simnet.callPublicFn(
-      POOL,
-      "shield",
-      [
-        Cl.uint(100 * ONE_STX),
-        Cl.buffer(c0),
-        Cl.buffer(bytes32(1, 0x4f)),
-        Cl.buffer(bytes32(1, 0x4d)),
-        Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
-        ...publishFor(1, seed),
-      ],
-      alice,
-    );
+    seedShield(1, 100 * ONE_STX, GENESIS_ROOT, R(2), 0);
 
-    const currentRoot = bytes32(2, 0x52);
+    const currentRoot = R(2);
     const expected = splitPublicInputs({
       nullifier: bytes32(1, 0x4e),
       commitment1: bytes32(2, 0x3c),
@@ -311,6 +289,8 @@ describe("contract == SDK public-input hash", () => {
       commitment2: bytes32(3, 0x3c),
       ownerCommitment2: bytes32(3, 0x4f),
       merkleRoot: currentRoot,
+      newRoot: R(4),
+      leafIndex: 1, // outputs land at slots 1 and 2
       circuitVersion: CIRCUIT_VERSION,
     });
 
@@ -326,7 +306,8 @@ describe("contract == SDK public-input hash", () => {
         Cl.buffer(bytes32(3, 0x4f)),
         Cl.buffer(bytes32(3, 0x4d)),
         Cl.buffer(currentRoot),
-        Cl.buffer(bytes32(4, 0x52)),
+        Cl.buffer(R(4)),
+        Cl.uint(1),
         ...publishFor(4, expected),
       ],
       alice,
@@ -336,39 +317,18 @@ describe("contract == SDK public-input hash", () => {
 
   it("merge", () => {
     wire();
-    for (const [n, amt] of [
-      [1, 40],
-      [2, 60],
-    ] as const) {
-      const seed = shieldPublicInputs({
-        commitment: bytes32(n, 0x3c),
-        ownerCommitment: bytes32(n, 0x4f),
-        amount: BigInt(amt * ONE_STX),
-        circuitVersion: CIRCUIT_VERSION,
-      });
-      simnet.callPublicFn(
-        POOL,
-        "shield",
-        [
-          Cl.uint(amt * ONE_STX),
-          Cl.buffer(bytes32(n, 0x3c)),
-          Cl.buffer(bytes32(n, 0x4f)),
-          Cl.buffer(bytes32(n, 0x4d)),
-          Cl.buffer(n === 1 ? GENESIS_ROOT : bytes32(2, 0x52)),
-          Cl.buffer(bytes32(n + 1, 0x52)),
-          ...publishFor(1, seed),
-        ],
-        alice,
-      );
-    }
+    seedShield(1, 40 * ONE_STX, GENESIS_ROOT, R(2), 0);
+    seedShield(2, 60 * ONE_STX, R(2), R(3), 1);
 
-    const currentRoot = bytes32(3, 0x52);
+    const currentRoot = R(3);
     const expected = mergePublicInputs({
       nullifier1: bytes32(1, 0x4e),
       nullifier2: bytes32(2, 0x4e),
       commitment: bytes32(9, 0x3c),
       ownerCommitment: bytes32(9, 0x4f),
       merkleRoot: currentRoot,
+      newRoot: R(5),
+      leafIndex: 2,
       circuitVersion: CIRCUIT_VERSION,
     });
 
@@ -382,7 +342,8 @@ describe("contract == SDK public-input hash", () => {
         Cl.buffer(bytes32(9, 0x4f)),
         Cl.buffer(bytes32(9, 0x4d)),
         Cl.buffer(currentRoot),
-        Cl.buffer(bytes32(5, 0x52)),
+        Cl.buffer(R(5)),
+        Cl.uint(2),
         ...publishFor(5, expected),
       ],
       alice,
@@ -392,7 +353,7 @@ describe("contract == SDK public-input hash", () => {
 });
 
 // ===========================================================================
-// The binding must contain ONLY circuit inputs
+// The binding must contain EXACTLY the circuit inputs
 // ===========================================================================
 
 describe("only circuit inputs are bound", () => {
@@ -404,6 +365,9 @@ describe("only circuit inputs are bound", () => {
       commitment,
       ownerCommitment: owner,
       amount: BigInt(10 * ONE_STX),
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
       circuitVersion: CIRCUIT_VERSION,
     });
     const inclusion = publishFor(1, expected);
@@ -418,7 +382,8 @@ describe("only circuit inputs are bound", () => {
         Cl.buffer(owner),
         Cl.buffer(bytes32(999, 0x4d)), // arbitrary metadata
         Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
+        Cl.buffer(R(2)),
+        Cl.uint(0),
         ...inclusion,
       ],
       alice,
@@ -426,15 +391,21 @@ describe("only circuit inputs are bound", () => {
     expect(res.result.type).toBe("ok");
   });
 
-  it("new-root does not affect the hash — the circuit never proves it", () => {
+  it("new-root DOES affect the hash — the transition is proven (v2)", () => {
     wire();
     const commitment = bytes32(1, 0x3c);
+    // leaf published for new-root R(2) ...
     const expected = shieldPublicInputs({
       commitment,
       ownerCommitment: bytes32(1, 0x4f),
       amount: BigInt(10 * ONE_STX),
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
       circuitVersion: CIRCUIT_VERSION,
     });
+    // ... but a DIFFERENT new-root is submitted -> contract derives a different
+    // hash, not present in the published aggregation.
     const res = simnet.callPublicFn(
       POOL,
       "shield",
@@ -444,12 +415,45 @@ describe("only circuit inputs are bound", () => {
         Cl.buffer(bytes32(1, 0x4f)),
         Cl.buffer(bytes32(1, 0x4d)),
         Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(77, 0x52)), // arbitrary new root
+        Cl.buffer(R(77)), // different new root
+        Cl.uint(0),
         ...publishFor(1, expected),
       ],
       alice,
     );
-    expect(res.result.type).toBe("ok");
+    expect(res.result).toBeErr(Cl.uint(310)); // ERR-PROOF-NOT-AGGREGATED
+  });
+
+  it("leaf-index DOES affect the hash — the slot is proven (v2)", () => {
+    wire();
+    const commitment = bytes32(1, 0x3c);
+    const expected = shieldPublicInputs({
+      commitment,
+      ownerCommitment: bytes32(1, 0x4f),
+      amount: BigInt(10 * ONE_STX),
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
+      circuitVersion: CIRCUIT_VERSION,
+    });
+    // submit a mismatched leaf-index: the derived hash differs -> u310 (and even
+    // if it matched, the registry slot 0 != 5 would reject with u258).
+    const res = simnet.callPublicFn(
+      POOL,
+      "shield",
+      [
+        Cl.uint(10 * ONE_STX),
+        Cl.buffer(commitment),
+        Cl.buffer(bytes32(1, 0x4f)),
+        Cl.buffer(bytes32(1, 0x4d)),
+        Cl.buffer(GENESIS_ROOT),
+        Cl.buffer(R(2)),
+        Cl.uint(5), // wrong slot
+        ...publishFor(1, expected),
+      ],
+      alice,
+    );
+    expect(res.result.type).toBe("err");
   });
 
   it("amount DOES affect the hash — it is a circuit input", () => {
@@ -459,6 +463,9 @@ describe("only circuit inputs are bound", () => {
       commitment,
       ownerCommitment: bytes32(1, 0x4f),
       amount: BigInt(10 * ONE_STX),
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
       circuitVersion: CIRCUIT_VERSION,
     });
     // submit 20 STX against a leaf computed for 10 STX
@@ -471,7 +478,8 @@ describe("only circuit inputs are bound", () => {
         Cl.buffer(bytes32(1, 0x4f)),
         Cl.buffer(bytes32(1, 0x4d)),
         Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
+        Cl.buffer(R(2)),
+        Cl.uint(0),
         ...publishFor(1, forTen),
       ],
       alice,
@@ -481,29 +489,9 @@ describe("only circuit inputs are bound", () => {
 
   it("recipient DOES affect the hash — substitution is rejected", () => {
     wire();
-    const c0 = bytes32(1, 0x3c);
-    const seed = shieldPublicInputs({
-      commitment: c0,
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: BigInt(50 * ONE_STX),
-      circuitVersion: CIRCUIT_VERSION,
-    });
-    simnet.callPublicFn(
-      POOL,
-      "shield",
-      [
-        Cl.uint(50 * ONE_STX),
-        Cl.buffer(c0),
-        Cl.buffer(bytes32(1, 0x4f)),
-        Cl.buffer(bytes32(1, 0x4d)),
-        Cl.buffer(GENESIS_ROOT),
-        Cl.buffer(bytes32(2, 0x52)),
-        ...publishFor(1, seed),
-      ],
-      alice,
-    );
+    seedShield(1, 50 * ONE_STX, GENESIS_ROOT, R(2), 0);
 
-    const root = bytes32(2, 0x52);
+    const root = R(2);
     const forRecipient = withdrawPublicInputs({
       nullifier: bytes32(1, 0x4e),
       amount: BigInt(10 * ONE_STX),
@@ -528,36 +516,30 @@ describe("only circuit inputs are bound", () => {
   });
 
   it("the merkle root DOES affect the hash for spends", () => {
-    const a = transferPublicInputs({
+    const base = {
       nullifier: bytes32(1, 0x4e),
       newCommitment: bytes32(2, 0x3c),
       newOwnerCommitment: bytes32(2, 0x4f),
-      merkleRoot: bytes32(1, 0x52),
+      newRoot: R(9),
+      leafIndex: 1,
       circuitVersion: CIRCUIT_VERSION,
-    });
-    const b = transferPublicInputs({
-      nullifier: bytes32(1, 0x4e),
-      newCommitment: bytes32(2, 0x3c),
-      newOwnerCommitment: bytes32(2, 0x4f),
-      merkleRoot: bytes32(2, 0x52),
-      circuitVersion: CIRCUIT_VERSION,
-    });
+    };
+    const a = transferPublicInputs({ ...base, merkleRoot: R(1) });
+    const b = transferPublicInputs({ ...base, merkleRoot: R(2) });
     expect(Buffer.from(a).toString("hex")).not.toBe(Buffer.from(b).toString("hex"));
   });
 
   it("the circuit version DOES affect the hash — proofs cannot cross versions", () => {
-    const v1 = shieldPublicInputs({
+    const base = {
       commitment: bytes32(1, 0x3c),
       ownerCommitment: bytes32(1, 0x4f),
       amount: 1n,
-      circuitVersion: 1,
-    });
-    const v2 = shieldPublicInputs({
-      commitment: bytes32(1, 0x3c),
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: 1n,
-      circuitVersion: 2,
-    });
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
+    };
+    const v1 = shieldPublicInputs({ ...base, circuitVersion: 1 });
+    const v2 = shieldPublicInputs({ ...base, circuitVersion: 2 });
     expect(Buffer.from(v1).toString("hex")).not.toBe(Buffer.from(v2).toString("hex"));
   });
 });
@@ -567,30 +549,36 @@ describe("only circuit inputs are bound", () => {
 // ===========================================================================
 
 describe("public input vectors", () => {
-  it("have exactly the circuits' arity", () => {
-    const args = {
-      commitment: bytes32(1, 0x3c),
-      ownerCommitment: bytes32(1, 0x4f),
-      amount: 1n,
-      circuitVersion: 1,
-    };
-    expect(publicInputVector.shield(args)).toHaveLength(5);
+  it("have exactly the circuits' v2 arity", () => {
+    expect(
+      publicInputVector.shield({
+        commitment: bytes32(1, 0x3c),
+        ownerCommitment: bytes32(1, 0x4f),
+        amount: 1n,
+        oldRoot: GENESIS_ROOT,
+        newRoot: R(2),
+        leafIndex: 0,
+        circuitVersion: CIRCUIT_VERSION,
+      }),
+    ).toHaveLength(8);
     expect(
       publicInputVector.transfer({
         nullifier: bytes32(1, 0x4e),
         newCommitment: bytes32(2, 0x3c),
         newOwnerCommitment: bytes32(2, 0x4f),
-        merkleRoot: bytes32(1, 0x52),
-        circuitVersion: 1,
+        merkleRoot: R(1),
+        newRoot: R(2),
+        leafIndex: 1,
+        circuitVersion: CIRCUIT_VERSION,
       }),
-    ).toHaveLength(6);
+    ).toHaveLength(8);
     expect(
       publicInputVector.withdraw({
         nullifier: bytes32(1, 0x4e),
         amount: 1n,
         recipient,
-        merkleRoot: bytes32(1, 0x52),
-        circuitVersion: 1,
+        merkleRoot: R(1),
+        circuitVersion: CIRCUIT_VERSION,
       }),
     ).toHaveLength(6);
     expect(
@@ -600,20 +588,24 @@ describe("public input vectors", () => {
         ownerCommitment1: bytes32(2, 0x4f),
         commitment2: bytes32(3, 0x3c),
         ownerCommitment2: bytes32(3, 0x4f),
-        merkleRoot: bytes32(1, 0x52),
-        circuitVersion: 1,
+        merkleRoot: R(1),
+        newRoot: R(2),
+        leafIndex: 1,
+        circuitVersion: CIRCUIT_VERSION,
       }),
-    ).toHaveLength(8);
+    ).toHaveLength(10);
     expect(
       publicInputVector.merge({
         nullifier1: bytes32(1, 0x4e),
         nullifier2: bytes32(2, 0x4e),
         commitment: bytes32(9, 0x3c),
         ownerCommitment: bytes32(9, 0x4f),
-        merkleRoot: bytes32(1, 0x52),
-        circuitVersion: 1,
+        merkleRoot: R(1),
+        newRoot: R(2),
+        leafIndex: 2,
+        circuitVersion: CIRCUIT_VERSION,
       }),
-    ).toHaveLength(7);
+    ).toHaveLength(9);
   });
 
   it("hashing the vector equals the operation hash — one encoding, not two", () => {
@@ -621,7 +613,10 @@ describe("public input vectors", () => {
       commitment: bytes32(1, 0x3c),
       ownerCommitment: bytes32(1, 0x4f),
       amount: 42n,
-      circuitVersion: 1,
+      oldRoot: GENESIS_ROOT,
+      newRoot: R(2),
+      leafIndex: 0,
+      circuitVersion: CIRCUIT_VERSION,
     };
     expect(hashPublicInputVector(publicInputVector.shield(args))).toEqual(
       shieldPublicInputs(args),
@@ -633,8 +628,8 @@ describe("public input vectors", () => {
       nullifier: bytes32(1, 0x4e),
       amount: 12345n,
       recipient,
-      merkleRoot: bytes32(1, 0x52),
-      circuitVersion: 1,
+      merkleRoot: R(1),
+      circuitVersion: CIRCUIT_VERSION,
     })) {
       expect(fe).toHaveLength(32);
     }
