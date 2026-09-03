@@ -41,7 +41,7 @@ const record = (name: string, ok: boolean, txid?: string, detail?: string) => {
 
 const main = async (): Promise<number> => {
   const network = (process.argv[2] as Network) ?? "testnet";
-  const env = loadEnv(".env.testnet");
+  const env = loadEnv(process.env["DEPLOY_ENV_FILE"] ?? ".env.v2.deploy");
   const signer = await signerFromMnemonic(resolveDeployerMnemonic(env, network), network);
   const d = new Deployer(network, signer, env["STACKS_API_URL"] || loadClarinetApiUrl(network) || NETWORKS[network].coreApiUrl);
   const addr = loadAddresses(network);

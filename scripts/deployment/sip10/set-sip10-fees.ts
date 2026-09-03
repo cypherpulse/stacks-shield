@@ -5,7 +5,7 @@
 //
 // Configures per-asset fees for USDCx + sBTC by calling
 // `asset-registry.set-asset-fee-config` (fee-admin only — the deployer from
-// .env.deploy). Defaults MIRROR the live native STX protocol.
+// .env.v2.deploy). Defaults MIRROR the live native STX protocol.
 //
 // WHY THESE DEFAULTS — how the native STX protocol charges (protocol-fees.clar,
 // verified live): SHIELD 25 bps, WITHDRAWAL 30 bps, TRANSFER/SPLIT/MERGE flat
@@ -31,7 +31,7 @@
 // Ceiling: bps <= privacy-registry.get-max-fee-bps (testnet default 100 = 1%);
 // flat <= the asset's max-shield. Both are asserted on chain too.
 //
-// Tunables (edit here or override via .env.deploy):
+// Tunables (edit here or override via .env.v2.deploy):
 //   FEE_SHIELD_BPS     shield fee in basis points       (default 25 = 0.25%)
 //   FEE_WITHDRAW_BPS   withdrawal fee in basis points   (default 30 = 0.30%)
 //   FEE_FLAT_TOKENS    flat fee for transfer/split/merge, in WHOLE tokens, paid by

@@ -30,6 +30,11 @@ export const AUTHORIZED_CALLERS: ContractName[] = [
   "split-merge-manager",
 ];
 
+/** The native STX circuit version bound into proofs and vkey registration.
+ *  Must equal privacy-registry's CIRCUIT-VERSION (the value get-circuit-version
+ *  returns, which the pool passes to zk-verifier.verify-proof). */
+export const STX_CIRCUIT_VERSION = 2;
+
 /** Circuit → proof type mapping for vkey registration. */
 export const CIRCUITS = [
   { name: "shield-note", proofType: 1 },
@@ -163,12 +168,16 @@ export const resolveDeployerMnemonic = (
   env: Record<string, string>,
   network: Network,
 ): string => {
-  const fromEnv = env["DEPLOYER_MNEMONIC"];
+  // NEW_DEPLOYER_MNEMONIC is the v2 relaunch key (shared with the SIP-10 scripts,
+  // which read the same .env.v2.deploy) and takes PRECEDENCE so a stale
+  // DEPLOYER_MNEMONIC in .env / the shell can never deploy the STX core under a
+  // different wallet than the SIP-10 stack. DEPLOYER_MNEMONIC is the legacy fallback.
+  const fromEnv = env["NEW_DEPLOYER_MNEMONIC"] || env["DEPLOYER_MNEMONIC"];
   if (fromEnv) return fromEnv;
   const fromClarinet = loadClarinetMnemonic(network);
   if (fromClarinet) return fromClarinet;
   throw new Error(
-    "No deployer mnemonic found. Set DEPLOYER_MNEMONIC in .env.testnet, or " +
+    "No deployer mnemonic found. Set NEW_DEPLOYER_MNEMONIC (or DEPLOYER_MNEMONIC) in .env.v2.deploy, or " +
       `put a plaintext (unencrypted) mnemonic in settings/${network === "mainnet" ? "Mainnet" : "Testnet"}.toml ` +
       "under [accounts.deployer] — the same file `clarinet deployments apply` reads.",
   );

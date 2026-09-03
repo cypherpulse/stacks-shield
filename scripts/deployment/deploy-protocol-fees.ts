@@ -12,7 +12,7 @@ import { Deployer, signerFromMnemonic } from "./deployer.js";
 
 const main = async () => {
   const network = (process.argv[2] as Network) ?? "testnet";
-  const env = loadEnv(network === "mainnet" ? ".env.mainnet" : ".env.testnet");
+  const env = loadEnv(network === "mainnet" ? ".env.mainnet" : (process.env["DEPLOY_ENV_FILE"] ?? ".env.v2.deploy"));
   const signer = await signerFromMnemonic(resolveDeployerMnemonic(env, network), network);
   const d = new Deployer(network, signer, env["STACKS_API_URL"] || loadClarinetApiUrl(network) || NETWORKS[network].coreApiUrl);
   const txid = await d.deployContract("protocol-fees");

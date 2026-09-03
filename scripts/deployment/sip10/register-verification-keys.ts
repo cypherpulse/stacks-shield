@@ -9,7 +9,7 @@
 //   - set-zkverify-binding(proof-type, 1, zkv-vkey-hash, version-hash)
 // and once: set-zkverify-context-hash(context-hash).
 //
-// ALL hash material comes from .env.deploy (never hardcoded). Each circuit needs
+// ALL hash material comes from .env.v2.deploy (never hardcoded). Each circuit needs
 // THREE hashes plus the shared context hash:
 //   <PREFIX>_VK_HASH        the bb.js verification-key hash (register-vk anchor)
 //   <PREFIX>_ZKV_VKEY_HASH  the vk hash zkVerify assigns (from its VkRegistered event)

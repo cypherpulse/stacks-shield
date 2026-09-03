@@ -13,7 +13,7 @@
 // NOTE: no committee is seated. There isn't one.
 
 import { Cl } from "@stacks/transactions";
-import { AUTHORIZED_CALLERS, CIRCUITS, type Network } from "./config.js";
+import { AUTHORIZED_CALLERS, CIRCUITS, STX_CIRCUIT_VERSION, type Network } from "./config.js";
 import type { Deployer } from "./deployer.js";
 
 export interface WireOptions {
@@ -86,7 +86,7 @@ export const wireContracts = async (
       await d.callContract(
         "zk-verifier",
         "register-verification-key",
-        [Cl.uint(circuit.proofType), Cl.uint(1), hexBuf(vkey), Cl.uint(len)],
+        [Cl.uint(circuit.proofType), Cl.uint(STX_CIRCUIT_VERSION), hexBuf(vkey), Cl.uint(len)],
         `register vkey ${circuit.name}`,
       );
     } catch {
@@ -120,7 +120,7 @@ export const wireContracts = async (
       await d.callContract(
         "zk-verifier",
         "set-zkverify-binding",
-        [Cl.uint(circuit.proofType), Cl.uint(1), hexBuf(zkvVkey), hexBuf(versionHash)],
+        [Cl.uint(circuit.proofType), Cl.uint(STX_CIRCUIT_VERSION), hexBuf(zkvVkey), hexBuf(versionHash)],
         `bind zkVerify ${circuit.name}`,
       );
     } catch {

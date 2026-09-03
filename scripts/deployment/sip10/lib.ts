@@ -6,10 +6,11 @@
 // Clarity-argument helpers. Every SIP-10 deploy/configure/verify script imports
 // from here so there is one implementation of each concern.
 //
-// Secrets: the deployer mnemonic is read from .env.deploy (NEW_DEPLOYER_MNEMONIC)
-// and never logged. Deploys happen under the SAME account as the frozen STX
-// protocol (ST2HXRZ8...), so `.privacy-registry` / `.note-manager` in the SIP-10
-// contracts resolve to the already-deployed frozen contracts.
+// Secrets: the deployer mnemonic is read from .env.v2.deploy (NEW_DEPLOYER_MNEMONIC,
+// override the file with DEPLOY_ENV_FILE) and never logged. The SIP-10 contracts
+// reference `.privacy-registry` and `.note-manager`, which resolve under the SAME
+// deploying account -- so those two must already be deployed under whatever
+// account this mnemonic derives (set NEW_DEPLOYER_ADDRESS to that account).
 
 import { Cl, type ClarityValue } from "@stacks/transactions";
 import { loadEnv, type ContractName } from "../config.js";
@@ -30,7 +31,7 @@ export const VERIFIER = "sip10-zk-verifier";
 export const ASSET_REGISTRY = "asset-registry";
 export const FEES = "sip10-protocol-fees";
 export const REGISTRY = "privacy-registry"; // frozen, already deployed
-export const SIP10_CIRCUIT_VERSION = 1;
+export const SIP10_CIRCUIT_VERSION = 2;
 // UltraHonk (bb, evm target) proof byte length — the same value the STX registry
 // uses. Note: raw proofs are NOT submitted on chain (verification is by zkVerify
 // aggregation + Merkle inclusion of the public-inputs leaf), so proof-length is
@@ -49,25 +50,25 @@ export const CIRCUITS = [
   { name: "merge", proofType: 5, prefix: "MERGE", dir: "merge", pkg: "sip10_merge_note" },
 ] as const;
 
-export const EXPECTED_DEPLOYER = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+export const EXPECTED_DEPLOYER = "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 
 // ---- environment ------------------------------------------------------------
 
-export const env = (): Record<string, string> => loadEnv(".env.deploy");
+export const env = (): Record<string, string> => loadEnv(process.env["DEPLOY_ENV_FILE"] ?? ".env.v2.deploy");
 
 /** Throws a descriptive error listing every missing key BEFORE any broadcast. */
 export const requireEnvVars = (e: Record<string, string>, keys: string[]): void => {
   const missing = keys.filter((k) => !e[k] || e[k]!.trim() === "");
   if (missing.length > 0) {
     throw new Error(
-      `Missing required .env.deploy variables:\n  - ${missing.join("\n  - ")}\n` +
-        `Fill them in .env.deploy before running this step.`,
+      `Missing required .env.v2.deploy variables:\n  - ${missing.join("\n  - ")}\n` +
+        `Fill them in .env.v2.deploy before running this step.`,
     );
   }
 };
 
-/** Build a testnet Deployer from .env.deploy, asserting the derived address is
- *  the expected STX Shield deployer. Never logs the mnemonic. */
+/** Build a testnet Deployer from .env.v2.deploy, asserting the derived address is
+ *  the expected deployer (NEW_DEPLOYER_ADDRESS). Never logs the mnemonic. */
 export const getDeployer = async (): Promise<Deployer> => {
   const e = env();
   requireEnvVars(e, ["NEW_DEPLOYER_MNEMONIC"]);

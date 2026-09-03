@@ -4,7 +4,7 @@
 //   npx tsx scripts/deployment/sip10/register-assets.ts
 //
 // Registers sBTC and USDCx in asset-registry, using the OFFICIAL testnet token
-// contracts (from .env.deploy). register-asset validates the token against the
+// contracts (from .env.v2.deploy). register-asset validates the token against the
 // SIP-010 trait and asserts its live get-decimals matches the declared value.
 // Idempotent-ish: a re-run fails with ERR-PRINCIPAL-EXISTS (u401), which the
 // script reports and treats as "already registered".

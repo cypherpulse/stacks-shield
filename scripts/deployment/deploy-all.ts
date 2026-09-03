@@ -46,7 +46,9 @@ export const main = async (): Promise<number> => {
   const network = (process.argv[2] as Network) ?? "testnet";
   if (!NETWORKS[network]) throw new Error(`unknown network: ${network}`);
 
-  const env = loadEnv(network === "mainnet" ? ".env.mainnet" : ".env.testnet");
+  const env = loadEnv(
+    network === "mainnet" ? ".env.mainnet" : (process.env["DEPLOY_ENV_FILE"] ?? ".env.v2.deploy"),
+  );
   const mnemonic = resolveDeployerMnemonic(env, network);
   const apiUrl =
     env["STACKS_API_URL"] || loadClarinetApiUrl(network) || NETWORKS[network].coreApiUrl;
