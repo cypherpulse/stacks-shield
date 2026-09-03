@@ -1,7 +1,13 @@
 # Stacks Shield: A Multi-Asset Shielded-Pool Protocol for Stacks
 
-**Version 1.0 — Testnet**
-Deployer: `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`
+**Testnet**
+Deployer (v2, current): `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`
+Deployer (v1, superseded): `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`
+
+> **v2** binds the Merkle-tree transition into every leaf-adding proof (`new_root`
+> + `leaf_index`) and asserts the registry-assigned slot matches the proof-bound
+> index, so a published root is proven rather than asserted (circuit version 2,
+> deployed fresh). v1 is retained for history and no longer used by the clients.
 
 ---
 

@@ -62,7 +62,7 @@ if (!PK) {
 const NETWORK = (process.env["STX_NETWORK"] ?? "testnet") as Network;
 const API_URL = process.env["STX_API_URL"] ?? "https://stx-shield-api.onrender.com";
 const RELAYER_URL = process.env["STX_RELAYER_URL"] ?? "http://localhost:8787";
-const DEPLOYER = process.env["STX_DEPLOYER"] ?? "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+const DEPLOYER = process.env["STX_DEPLOYER"] ?? "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 const HIRO = process.env["STX_HIRO_URL"] ?? "https://api.testnet.hiro.so";
 const CIRCUITS_DIR = process.env["STX_CIRCUITS_DIR"] ?? "../zk/circuits";
 const NOTES_FILE = process.env["STX_NOTES_FILE"] ?? "./cli-notes.json";

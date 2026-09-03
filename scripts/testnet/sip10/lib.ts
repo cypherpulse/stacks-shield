@@ -315,7 +315,7 @@ export const loadAll = (): Env => {
   const deployEnv = loadEnv(".env.deploy");
   const testnetEnv = loadEnv(".env.testnet");
   const users = loadEnv(".env.users");
-  const deployer = deployEnv.NEW_DEPLOYER_ADDRESS ?? "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+  const deployer = deployEnv.NEW_DEPLOYER_ADDRESS ?? "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
   return { deployer, deployEnv, testnetEnv, users };
 };
 export const openSession = async (testnetEnv: Record<string, string>) => {

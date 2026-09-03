@@ -18,7 +18,7 @@ import { getAddressFromPublicKey, signMessageHashRsv } from "@stacks/transaction
 
 const API = process.argv[2] ?? "http://127.0.0.1:8888";
 const RELAYER = process.argv[3] ?? "http://127.0.0.1:8787";
-const DEPLOYER = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+const DEPLOYER = "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 
 let pass = 0;
 let fail = 0;

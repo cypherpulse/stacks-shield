@@ -31,7 +31,7 @@ if (!ADMIN_KEY) {
   process.exit(1);
 }
 const NETWORK = (process.env["STX_NETWORK"] ?? "testnet") as "testnet" | "mainnet";
-const DEPLOYER = process.env["STX_DEPLOYER"] ?? "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+const DEPLOYER = process.env["STX_DEPLOYER"] ?? "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 
 // On-chain constants from privacy-registry.clar.
 const STX = 1_000_000n;

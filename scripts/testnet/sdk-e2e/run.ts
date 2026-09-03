@@ -45,7 +45,8 @@ const readEnv = (): Record<string, string> => {
 
 const PLANS: Record<string, AssetPlan> = {
   stx: { ref: "STX", label: "STX", shield: 300, split: [150, 150] },
-  sbtc: { ref: "sBTC", label: "sBTC", shield: 200_000, split: [80_000, 120_000] },
+  // sBTC is 8-decimal with a 1000-sBTC max shield; keep amounts realistic (human sBTC).
+  sbtc: { ref: "sBTC", label: "sBTC", shield: 100, split: [40, 60] },
   usdcx: { ref: "USDCx", label: "USDCx", shield: 250_000, split: [100_000, 150_000] },
 };
 

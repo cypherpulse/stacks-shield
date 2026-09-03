@@ -18,7 +18,7 @@ export const NETWORKS: Record<Network, NetworkDefaults> = {
     apiUrl: "https://stx-shield-api.onrender.com",
     relayerUrls: ["https://stx-shield-relayer.onrender.com"],
     // The live testnet deployment.
-    deployer: "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH",
+    deployer: "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6",
     hiroApiUrl: "https://api.testnet.hiro.so",
     zkVerifyDomainId: 0,
   },

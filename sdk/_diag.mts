@@ -3,7 +3,7 @@ import { Cl, cvToHex, hexToCV, cvToJSON } from "@stacks/transactions";
 
 const API = process.env.API_URL || "https://stx-shield-api.onrender.com";
 const HIRO = "https://api.testnet.hiro.so";
-const DEP = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+const DEP = process.env.STX_DEPLOYER || "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 const hexToBytes = (h: string) => { const s = h.replace(/^0x/, ""); const o = new Uint8Array(s.length/2); for (let i=0;i<o.length;i++) o[i]=parseInt(s.slice(i*2,i*2+2),16); return o; };
 const bytesToHex = (b: Uint8Array) => "0x" + Array.from(b, x=>x.toString(16).padStart(2,"0")).join("");
 

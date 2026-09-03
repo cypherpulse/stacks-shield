@@ -13,12 +13,20 @@ verified through [zkVerify](https://zkverify.io).
 
 📚 Full documentation: [`docs/`](docs/README.md) · Whitepaper: [`docs/whitepaper.md`](docs/whitepaper.md).
 
-> **Status: live on Stacks Testnet.** The complete lifecycle — shield → transfer
-> → split → merge → withdraw — runs end-to-end for **STX, USDCx and sBTC** with
-> **real proofs and real zkVerify verification**, including relayed transactions
-> (the user never appears on chain) and double-spend rejection. Deployer:
-> `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`. Not yet audited; not yet on
-> mainnet. See [Honest limitations](#honest-limitations).
+> **Status: live on Stacks Testnet (v2).** The complete lifecycle — shield →
+> transfer → split → merge → withdraw — runs end-to-end for **STX, USDCx and
+> sBTC** with **real proofs and real zkVerify verification**, including relayed
+> transactions (the user never appears on chain) and double-spend rejection.
+> Not yet audited; not yet on mainnet. See [Honest limitations](#honest-limitations).
+>
+> **Deployments (testnet):**
+> - **v2 (current)** — `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`. Every
+>   leaf-adding proof now binds the Merkle-tree transition (`new_root` +
+>   `leaf_index`), and each pool asserts the registry-assigned slot equals the
+>   proof-bound index — so a published root is proven, never merely asserted.
+>   Circuit version `2`, deployed fresh under a new account.
+> - **v1 (superseded)** — `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`. Original
+>   testnet deployment; retained for history, no longer used by the SDK/clients.
 
 ---
 

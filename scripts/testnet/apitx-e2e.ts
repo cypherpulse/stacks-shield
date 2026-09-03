@@ -32,7 +32,7 @@ const RELAYER = process.env["RELAYER_URL"] ?? "http://127.0.0.1:8787";
 const PATHENV = "export PATH=$HOME/.nargo/bin:$HOME/.bb:$PATH";
 const REPO = "/mnt/g/2026/Blockchain/Stacks/stx-shield";
 const ONE = 1_000_000n;
-const DEPLOYER = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+const DEPLOYER = "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 
 const hexOf = (x: bigint) => "0x" + x.toString(16).padStart(64, "0");
 const toBuf = (h: string) => Uint8Array.from(Buffer.from(h.replace(/^0x/, ""), "hex"));

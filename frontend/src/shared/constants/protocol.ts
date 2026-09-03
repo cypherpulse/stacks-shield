@@ -9,7 +9,7 @@ export const RELAYER_URL =
 // relayer so proofs are submitted through it (browsers never hold a zkVerify seed).
 export const ZKVERIFY_URL = import.meta.env.VITE_ZKVERIFY_URL ?? RELAYER_URL;
 
-export const DEPLOYER = "ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH";
+export const DEPLOYER = "ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6";
 
 export const MIN_SHIELD_STX = 1;
 export const WITHDRAW_FEE_RATE = 0.003; // ~0.3% protocol withdraw fee
