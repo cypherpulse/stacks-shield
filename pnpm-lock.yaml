@@ -166,8 +166,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@stacks-shield/sdk':
-        specifier: workspace:*
-        version: link:../sdk
+        specifier: 1.0.0-beta.2
+        version: 1.0.0-beta.2(@aztec/bb.js@3.0.0-nightly.20260102)(@noir-lang/noir_js@1.0.0-beta.18)(@stacks/connect@8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@3.25.76))(zkverifyjs@3.1.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3))
       '@stacks/connect':
         specifier: ^8.2.6
         version: 8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@3.25.76)
@@ -2715,6 +2715,24 @@ packages:
 
   '@scure/sr25519@0.2.0':
     resolution: {integrity: sha512-uUuLP7Z126XdSizKtrCGqYyR3b3hYtJ6Fg/XFUXmc2//k2aXHDLqZwFeXxL97gg4XydPROPVnuaHGF2+xriSKg==}
+
+  '@stacks-shield/sdk@1.0.0-beta.2':
+    resolution: {integrity: sha512-7iQjxEN+RjezH7kT77Kzq/mPi+UXSJ+XXH6Dln3aqMa1BfJ/DNECMhC3JjO2SZkXxYLToJ9Z6s2OxA4i3/HUIQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@aztec/bb.js': 3.0.0-nightly.20260102
+      '@noir-lang/noir_js': 1.0.0-beta.18
+      '@stacks/connect': ^8.0.0
+      zkverifyjs: ^3.1.0
+    peerDependenciesMeta:
+      '@aztec/bb.js':
+        optional: true
+      '@noir-lang/noir_js':
+        optional: true
+      '@stacks/connect':
+        optional: true
+      zkverifyjs:
+        optional: true
 
   '@stacks/auth@7.5.0':
     resolution: {integrity: sha512-b1BcgH88RDIWGPpORy68VrywqVzVaTbXFKEV0Qt5+aSpnpXDBXYkixO+TTe8wSIiYXxovhu8IIhPqefL/f5EkA==}
@@ -8798,6 +8816,23 @@ snapshots:
     dependencies:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
+
+  '@stacks-shield/sdk@1.0.0-beta.2(@aztec/bb.js@3.0.0-nightly.20260102)(@noir-lang/noir_js@1.0.0-beta.18)(@stacks/connect@8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@3.25.76))(zkverifyjs@3.1.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3))':
+    dependencies:
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
+      '@stacks/encryption': 7.5.0
+      '@stacks/transactions': 7.5.0
+      poseidon-lite: 0.3.0
+      zod: 4.4.3
+    optionalDependencies:
+      '@aztec/bb.js': 3.0.0-nightly.20260102
+      '@noir-lang/noir_js': 1.0.0-beta.18
+      '@stacks/connect': 8.2.6(@types/react@19.2.17)(ioredis@5.11.1)(lit@3.3.0)(react@19.2.8)(typescript@5.9.3)(zod@3.25.76)
+      zkverifyjs: 3.1.0(@polkadot/util-crypto@14.0.3(@polkadot/util@14.0.3))(@polkadot/util@14.0.3)
+    transitivePeerDependencies:
+      - encoding
 
   '@stacks/auth@7.5.0':
     dependencies:
