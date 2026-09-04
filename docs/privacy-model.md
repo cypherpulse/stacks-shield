@@ -12,7 +12,7 @@ draws the line. For the full protocol see the [whitepaper](whitepaper.md).
 | **Split / Merge** | amounts, owner, asset | a nullifier + new commitment(s) |
 | **Withdraw** | which note was spent, the depositor it came from | recipient address, amount, asset |
 
-The **transparent edges** — shield and withdraw — expose an amount and an
+The **transparent edges**, shield and withdraw, expose an amount and an
 address by construction. Privacy comes from *unlinkability*: nothing connects a
 withdrawal to the deposit that funded it, and transfers/splits/merges reveal
 neither value nor participants.
@@ -27,7 +27,7 @@ Poseidon commitment:
 - SIP-10: `Poseidon2( Poseidon4(...), asset_id )`, `asset_id = fePrincipal(token)`
 
 `blinding` (a random field element) makes two notes of the same amount
-indistinguishable. The chain stores only the commitment — never the amount or
+indistinguishable. The chain stores only the commitment, never the amount or
 owner. Binding `asset_id` in makes the asset part of the note's identity, so a
 note of one asset cannot be spent as another even though all assets share one
 tree.
@@ -36,28 +36,27 @@ tree.
 Spending publishes a nullifier derived from the note secret and its tree
 position. The registry rejects a repeat, preventing double-spends. Because the
 nullifier is computed from secrets absent from the commitment, observers cannot
-link a nullifier to the commitment it spends — so a spend is unlinkable to the
+link a nullifier to the commitment it spends, so a spend is unlinkable to the
 note's creation.
 
 ### The shared Merkle tree
 Every commitment (all assets) lives in one tree; spends prove membership under a
 published root in zero knowledge. One shared tree means one shared **anonymity
-set** — the crowd you hide in — rather than a smaller separate set per asset.
+set**: the crowd you hide in, rather than a smaller separate set per asset.
 
 ### Encrypted notes and viewing keys
 The note's spendable data is encrypted to the owner's **viewing key** and
 published as opaque ciphertext. To find their notes, a client **trial-decrypts**
 the public feed locally; the amount is recovered on the device and never leaves
-it. The API only ever stores ciphertext and public locators — no amounts,
+it. The API only ever stores ciphertext and public locators, no amounts,
 secrets, or ownership.
 
 ### Sender privacy via the relayer
 ZK hides *what* moved but not *who broadcast the transaction*. A **relayer**
 submits transfer/split/merge/withdraw, so the operation lands from the relayer's
-address and the user never appears on chain. The relayer cannot alter anything —
-every parameter is bound into the proof.
+address and the user never appears on chain. The relayer cannot alter anything, every parameter is bound into the proof.
 
-## The anonymity set — the honest caveat
+## The anonymity set, the honest caveat
 
 Cryptography guarantees *unlinkability*; it does not manufacture a crowd. Your
 practical privacy is bounded by how many other deposits and withdrawals look like

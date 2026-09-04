@@ -4,28 +4,28 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![status](https://img.shields.io/badge/status-testnet%20beta-orange.svg)](#)
 
-Privacy-preserving transfers on Stacks — for native **STX** and **SIP-10 tokens
+Privacy-preserving transfers on Stacks, for native **STX** and **SIP-10 tokens
 (sBTC, USDCx)**. Stacks Shield lets users **shield** an asset into a private
 pool, **transfer / split / merge** value privately between opaque notes, and
-**withdraw** back to any transparent address — with note ownership, note amounts,
+**withdraw** back to any transparent address, with note ownership, note amounts,
 and recipient identities hidden by zero-knowledge proofs (Noir + UltraHonk),
 verified through [zkVerify](https://zkverify.io).
 
 📚 Full documentation: [`docs/`](docs/README.md) · Whitepaper: [`docs/whitepaper.md`](docs/whitepaper.md).
 
-> **Status: live on Stacks Testnet (v2).** The complete lifecycle — shield →
-> transfer → split → merge → withdraw — runs end-to-end for **STX, USDCx and
+> **Status: live on Stacks Testnet (v2).** The complete lifecycle, shield →
+> transfer → split → merge → withdraw, runs end-to-end for **STX, USDCx and
 > sBTC** with **real proofs and real zkVerify verification**, including relayed
 > transactions (the user never appears on chain) and double-spend rejection.
 > Not yet audited; not yet on mainnet. See [Honest limitations](#honest-limitations).
 >
 > **Deployments (testnet):**
-> - **v2 (current)** — `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`. Every
+> - **v2 (current)**: `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`. Every
 >   leaf-adding proof now binds the Merkle-tree transition (`new_root` +
 >   `leaf_index`), and each pool asserts the registry-assigned slot equals the
->   proof-bound index — so a published root is proven, never merely asserted.
+>   proof-bound index, so a published root is proven, never merely asserted.
 >   Circuit version `2`, deployed fresh under a new account.
-> - **v1 (superseded)** — `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`. Original
+> - **v1 (superseded)**: `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`. Original
 >   testnet deployment; retained for history, no longer used by the SDK/clients.
 
 ---
@@ -45,7 +45,7 @@ flowchart TB
     Relayer["Relayer<br/>publish roots · submit ops"]
     API["API + Indexer<br/>(Postgres)"]
 
-    subgraph Stacks["Stacks L1 — Clarity"]
+    subgraph Stacks["Stacks L1, Clarity"]
       direction TB
       Core["Frozen STX core"]
       Ext["SIP-10 extension"]
@@ -65,18 +65,19 @@ flowchart TB
     API -. "reads / events" .-> Stacks
 ```
 
-- **Frontend** — multi-asset dashboard (asset selector, per-asset balances, live
+- **Frontend**: multi-asset dashboard (asset selector, per-asset balances, live
   USD), talks only to the SDK.
-- **SDK** (`@stacks-shield/sdk`) — the single integration surface; hides
+- **SDK** (`@stacks-shield/sdk`), the single integration surface; hides
   contracts, relayer, zkVerify, Merkle tree, nullifiers, commitments.
-- **Prover** — UltraHonk proofs generated client-side (`@aztec/bb.js` WASM),
+- **Prover**: UltraHonk proofs generated client-side (`@aztec/bb.js` WASM),
   browser and Node, no native toolchain.
-- **zkVerify** — verifies proofs off chain and aggregates them into a Merkle
-  root (Clarity can't verify UltraHonk natively — see [trust model](#trust-model)).
-- **Relayer** — publishes aggregation roots on chain and submits the spend **as
-  the relayer**, so the user never appears; trustless (every parameter is bound
-  into the proof).
-- **API + indexer** — serves `/assets`, `/stats` (per-asset), `/commitments`,
+- **zkVerify**: verifies proofs off chain and aggregates them into a Merkle
+  root (Clarity can't verify UltraHonk natively, see [trust model](#trust-model)).
+- **Relayer**: submits the spend **as the relayer**, so the user never appears; it
+  cannot alter the operation, since every parameter is bound into the proof. It also
+  publishes aggregation roots on chain, which is currently a **trusted role** (see
+  [trust model](#trust-model)); root publication is not yet trustless.
+- **API + indexer**: serves `/assets`, `/stats` (per-asset), `/commitments`,
   encrypted-note feed; never stores amounts, secrets, or nullifier→commitment links.
 
 ---
@@ -85,16 +86,16 @@ flowchart TB
 
 1. A **note** is a Poseidon commitment. For STX:
    `Poseidon4(amount, ownerPkX, ownerPkY, blinding)`. For SIP-10 the asset is
-   bound in: `Poseidon2(Poseidon4(...), asset_id)` — the chain stores only the
+   bound in: `Poseidon2(Poseidon4(...), asset_id)`, the chain stores only the
    opaque commitment, never the amount, owner, or which note is spent.
 2. The SDK builds an UltraHonk proof (Noir + Barretenberg) that an operation is
    valid: the spender owns the input note, it's in the commitment tree, value is
    conserved, and nullifiers/commitments are well-formed.
 3. The proof goes to **zkVerify**, which verifies + aggregates it into a Merkle
    root; a **relayer** publishes that root on chain.
-4. The verifier contract accepts the operation only if its statement — a keccak
+4. The verifier contract accepts the operation only if its statement, a keccak
    hash binding the vkey hash, the version, and the canonical public inputs
-   (including `asset_id` for SIP-10) — is included in a published aggregation.
+   (including `asset_id` for SIP-10), is included in a published aggregation.
    Change any parameter and the statement changes, so the operation reverts.
 
 ```mermaid
@@ -111,7 +112,7 @@ sequenceDiagram
     zkVerify-->>SDK: aggregation id + Merkle root
     SDK->>Relayer: publish root + submit op
     Relayer->>Stacks: submit-aggregation(root)
-    Relayer->>Stacks: pool op — checks proof leaf ∈ root
+    Relayer->>Stacks: pool op, checks proof leaf ∈ root
     Stacks-->>Relayer: ok (nullifier + new commitment)
     SDK-->>User: confirmed (no on-chain link to the user)
 ```
@@ -125,9 +126,17 @@ transparent funds into the pool.)*
 UltraHonk proof natively (no BN254/BLS pairing primitives), so the contracts
 trust zkVerify's verification and check cheap **aggregation inclusion** on chain.
 This is an explicit, documented dependency, and moving verification onto Stacks
-itself is the primary direction of future work — the path from a self-hosted
+itself is the primary direction of future work, the path from a self-hosted
 verifier to fully native on-chain verification is in the
 [whitepaper](docs/whitepaper.md#9-toward-native-zk-verification-on-stacks).
+
+**Aggregation-root publication is a trusted role.** The zkVerify aggregation root is
+posted on chain by an authorized relayer, and the current on-chain check is only that
+the publisher is authorized. A compromised or malicious publisher is a real trust
+assumption, so root publication is not yet trustless. It runs today through a small
+dedicated relayer set (not the deployer), and a threshold (M-of-N) publisher scheme
+run by independent operators is planned to remove it. See the
+[security review](audits/security-review.md) (finding H-1).
 
 ---
 
@@ -135,7 +144,7 @@ verifier to fully native on-chain verification is in the
 
 Goal: add sBTC/USDCx **without touching the frozen STX protocol** and **without
 fragmenting privacy**. The asset is bound cryptographically into the commitment,
-while **all assets share one Merkle tree** — a USDCx note can never be spent as
+while **all assets share one Merkle tree**, a USDCx note can never be spent as
 an sBTC note, yet the anonymity infrastructure stays unified.
 
 ```mermaid
@@ -151,7 +160,7 @@ flowchart LR
 
 - **One pool, many assets.** `sip10-pool` handles every registered SIP-10 asset;
   routing (pool / verifier / fee-manager) comes from the on-chain
-  `asset-registry`, so **adding a token needs only on-chain registration — no
+  `asset-registry`, so **adding a token needs only on-chain registration, no
   code change**.
 - **Registry-driven discovery.** The API's `/assets` reads the registry; the SDK
   and UI consume it, so nothing hardcodes a pool or token.
@@ -202,22 +211,22 @@ flowchart TB
 
 | Contract | Role | Errors |
 |---|---|---|
-| `privacy-registry.clar` | Protocol source of truth — roots, nullifiers, commitments, limits, versions, stats, access control, state machine, relayer registry | `u100–u149` |
-| `note-manager.clar` | Shielded-note lifecycle | `u150–u199` |
-| `protocol-fees.clar` | Native STX fees & treasury | `u200–u249` |
-| `zk-verifier.clar` | zkVerify statement binding + aggregation-inclusion checks | `u300–u349` |
-| `privacy-pool.clar` | STX pool (shield / transfer / withdraw), STX custody | `u250–u299` |
-| `split-merge-manager.clar` | Private STX note split / merge | `u350–u399` |
+| `privacy-registry.clar` | Protocol source of truth, roots, nullifiers, commitments, limits, versions, stats, access control, state machine, relayer registry | `u100, u149` |
+| `note-manager.clar` | Shielded-note lifecycle | `u150, u199` |
+| `protocol-fees.clar` | Native STX fees & treasury | `u200, u249` |
+| `zk-verifier.clar` | zkVerify statement binding + aggregation-inclusion checks | `u300, u349` |
+| `privacy-pool.clar` | STX pool (shield / transfer / withdraw), STX custody | `u250, u299` |
+| `split-merge-manager.clar` | Private STX note split / merge | `u350, u399` |
 
 **SIP-10 extension** (reuses `privacy-registry` + `note-manager`)
 
 | Contract | Role | Errors |
 |---|---|---|
-| `sip-010-trait.clar` | The standard SIP-010 trait the pool calls tokens through | — |
-| `asset-registry.clar` | Supported-asset registry — uid, token principal, decimals, shield limits, per-asset fee config + recipient | `u400–u449` |
-| `sip10-pool.clar` | One pool for all SIP-10 assets — shield / transfer / split / merge / withdraw, asset-bound, per-asset conservation invariant | `u450–u499` |
-| `sip10-protocol-fees.clar` | Per-asset token-native fee collection + per-asset treasury | — |
-| `sip10-zk-verifier.clar` | Aggregation-inclusion checks for SIP-10 proofs | — |
+| `sip-010-trait.clar` | The standard SIP-010 trait the pool calls tokens through |, |
+| `asset-registry.clar` | Supported-asset registry, uid, token principal, decimals, shield limits, per-asset fee config + recipient | `u400, u449` |
+| `sip10-pool.clar` | One pool for all SIP-10 assets, shield / transfer / split / merge / withdraw, asset-bound, per-asset conservation invariant | `u450, u499` |
+| `sip10-protocol-fees.clar` | Per-asset token-native fee collection + per-asset treasury |, |
+| `sip10-zk-verifier.clar` | Aggregation-inclusion checks for SIP-10 proofs |, |
 
 `mock-sbtc` / `mock-usdc` exist for local testing and are **never deployed** to
 testnet (real token contracts are used there).
@@ -226,25 +235,27 @@ testnet (real token contracts are used there).
 
 ## Operations
 
-- **Shield** — transparent asset → a private note (user-signed; the only
+- **Shield**: transparent asset → a private note (user-signed; the only
   operation that moves the user's own funds).
-- **Transfer** — move a note's ownership privately. Publishes only a nullifier +
+- **Transfer**: move a note's ownership privately. Publishes only a nullifier +
   a new commitment; no visible token moves.
-- **Split** — one note → two smaller notes (value conserved in-circuit).
-- **Merge** — two notes → one note (same asset only).
-- **Withdraw** — a note → transparent tokens at any address, minus the fee.
+- **Split**: one note → two smaller notes (value conserved in-circuit).
+- **Merge**: two notes → one note (same asset only).
+- **Withdraw**: a note → transparent tokens at any address, minus the fee.
 
 Transfer / split / merge / withdraw can be submitted by a **relayer**, so the
 operation lands on chain from the relayer's address and the user never appears.
-The relayer is trustless: every parameter is bound into the proof, so it can
-submit-or-not but can never alter an amount, recipient, asset, or commitment.
+The submitting relayer cannot alter the operation: every parameter is bound into the
+proof, so it can submit or not, but can never change an amount, recipient, asset, or
+commitment. Publishing the aggregation root on chain is a separate role that is
+currently trusted (see the trust model); it is not yet trustless.
 
 ---
 
 ## Fees
 
 Per-asset, configured in the registry, mirroring the native STX protocol. Fees
-are **user-paid and private** — the shield fee is folded into the transparent
+are **user-paid and private**: the shield fee is folded into the transparent
 deposit; the withdrawal fee is pulled from the pool `as-contract`, so the public
 can never link a fee to a specific person.
 
@@ -256,7 +267,7 @@ can never link a fee to a specific person.
 
 Only shield & withdrawal can take a percentage (their amount is public at that
 moment); transfer/split/merge run over hidden amounts, so the contract can only
-charge a flat fee there — kept at 0 to avoid the relayer subsidising it. Config
+charge a flat fee there, kept at 0 to avoid the relayer subsidising it. Config
 script: `scripts/deployment/sip10/set-sip10-fees.ts`.
 
 ---
@@ -296,11 +307,11 @@ zk/
   circuits/         Noir: shield/transfer/withdraw/split/merge + keygen + shared lib
   circuits/sip10/   SIP-10 asset-bound circuit variants
   barretenberg/     UltraHonk proving / verification / vkeys
-sdk/                @stacks-shield/sdk — TS client (bb.js proving, Node + browser, NoteVault)
+sdk/                @stacks-shield/sdk, TS client (bb.js proving, Node + browser, NoteVault)
 services/
-  api/              read-only API + indexers (Fastify + PostgreSQL/Drizzle) — /assets, /stats byAsset
-  relayer/          relayer service — publishes roots to both verifiers, submits ops
-frontend/           React app — multi-asset dashboard, per-asset + USD, local vault
+  api/              read-only API + indexers (Fastify + PostgreSQL/Drizzle), /assets, /stats byAsset
+  relayer/          relayer service, publishes roots to both verifiers, submits ops
+frontend/           React app, multi-asset dashboard, per-asset + USD, local vault
 tests/              vitest suites (contracts, attacks, fuzz, e2e, integration, privacy)
 scripts/
   deployment/sip10/ deploy / configure / register-assets / set-sip10-fees / verify
@@ -337,7 +348,7 @@ await shield.withdraw(merged, recipient);        // back to transparent tokens
 ```
 
 Adding a new SIP-10 asset needs **only on-chain registration** in
-`asset-registry` — the SDK and UI discover it via `/assets`, no code change.
+`asset-registry`, the SDK and UI discover it via `/assets`, no code change.
 
 See [`sdk/README.md`](sdk/README.md) · full docs in [`docs/`](docs/README.md) ·
 services in [`services/api`](services/api) and [`services/relayer`](services/relayer).
@@ -354,7 +365,7 @@ For a public audience this must be stated plainly (full treatment in the
 - **Small anonymity set.** Privacy is only as strong as the crowd you hide in;
   the current set is small, so today's *practical* privacy is limited regardless
   of the cryptography. A shared tree across assets helps, but usage is still low.
-- **Verification is delegated to zkVerify** — a separate chain — rather than done
+- **Verification is delegated to zkVerify**: a separate chain, rather than done
   in Stacks consensus. A deliberate v1 choice and a real trust/liveness
   dependency the fully-native design would remove.
 - **Transparent sides are public.** Shield and withdraw amounts + addresses are
@@ -365,4 +376,4 @@ For a public audience this must be stated plainly (full treatment in the
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE).

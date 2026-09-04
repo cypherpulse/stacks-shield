@@ -14,7 +14,7 @@ flowchart TB
     Relayer["Relayer<br/>publish roots · submit ops"]
     API["API + Indexer<br/>(Postgres)"]
 
-    subgraph Stacks["Stacks L1 — Clarity"]
+    subgraph Stacks["Stacks L1, Clarity"]
       direction TB
       Core["Frozen STX core"]
       Ext["SIP-10 extension"]
@@ -38,7 +38,7 @@ flowchart TB
 |---|---|---|
 | **Frontend** | `frontend/` | React app: multi-asset dashboard, asset selector, per-asset balances + live USD, local note vault. Talks only to the SDK. |
 | **SDK** | `sdk/` (`@stacks-shield/sdk`) | The one integration surface. Builds notes/proofs, rebuilds the Merkle tree, routes ops, hides everything below. |
-| **Prover** | in the SDK (`@aztec/bb.js`) | Generates UltraHonk proofs client-side — browser (WASM threads) and Node — no native toolchain. |
+| **Prover** | in the SDK (`@aztec/bb.js`) | Generates UltraHonk proofs client-side, browser (WASM threads) and Node, no native toolchain. |
 | **zkVerify** | external (Volta) | Verifies proofs off chain, aggregates them into a Merkle root. |
 | **Relayer** | `services/relayer/` | Publishes aggregation roots on chain (to both verifiers) and submits spends as the relayer, hiding the user. |
 | **API + indexer** | `services/api/` (Postgres) | Indexes contract events; serves `/assets`, `/stats`, `/commitments`, the encrypted-note feed. Stores no secrets or amounts. |
@@ -75,12 +75,12 @@ flowchart TB
     S10V --> REG
 ```
 
-- **Frozen STX core (6):** `privacy-registry` (protocol source of truth — roots,
+- **Frozen STX core (6):** `privacy-registry` (protocol source of truth, roots,
   nullifiers, commitments, limits, versions, state machine, access control),
   `note-manager`, `privacy-pool`, `split-merge-manager`, `protocol-fees`,
   `zk-verifier`.
 - **SIP-10 extension (5):** `sip-010-trait`, `asset-registry`, `sip10-pool`,
-  `sip10-protocol-fees`, `sip10-zk-verifier` — reusing `privacy-registry` +
+  `sip10-protocol-fees`, `sip10-zk-verifier`, reusing `privacy-registry` +
   `note-manager` so the frozen core is untouched.
 
 ## Anatomy of an operation
@@ -105,7 +105,7 @@ sequenceDiagram
     zkVerify-->>SDK: aggregation id + Merkle root
     SDK->>Relayer: publish root + submit op
     Relayer->>Stacks: submit-aggregation(root) → both verifiers
-    Relayer->>Stacks: pool op — checks statement ∈ root
+    Relayer->>Stacks: pool op, checks statement ∈ root
     Stacks-->>Relayer: ok (nullifier + new commitment)
     API-->>SDK: indexer observes the event; note discoverable
 ```
@@ -114,14 +114,14 @@ sequenceDiagram
 
 - The SDK **rebuilds the commitment tree** from `/commitments` before each op, so
   its membership proof is against the live on-chain root. (This makes the indexer
-  a critical dependency — see the deep-dive.)
+  a critical dependency, see the deep-dive.)
 - A **shield** is signed by the user (it moves their own transparent funds into
   the pool) and now waits for on-chain confirmation before reporting success.
 - The relayer publishes each aggregation root to **both** `zk-verifier` and
   `sip10-zk-verifier`, and the SDK waits for the root on the asset's own verifier
   before broadcasting.
 - Encrypted note payloads are published to the API; clients **trial-decrypt** the
-  feed locally to discover their notes — the server never learns ownership.
+  feed locally to discover their notes, the server never learns ownership.
 
 ## Data the API does and doesn't hold
 

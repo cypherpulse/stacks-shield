@@ -1,15 +1,15 @@
-# Stacks Shield v2 — Testnet Deployment & Relayer Runbook
+# Stacks Shield v2, Testnet Deployment & Relayer Runbook
 
 This document records the **v2 relaunch** on Stacks testnet: the source and
 tooling changes, the fresh deployment under a new deployer wallet, and the
-dedicated relayer setup — with every command, in order.
+dedicated relayer setup, with every command, in order.
 
 > **v2 in one line:** every leaf-adding circuit now binds the Merkle-tree
 > transition (`new_root` + `leaf_index`) into the proof, and each pool asserts
 > the registry-assigned slot equals the proof-bound `leaf_index`. Because the
 > tree transition is now part of the statement, the whole family moves to
 > `circuit_version = 2`. Since nothing existed under the new wallet, the fix was
-> applied **in place** and deployed fresh — no `-v2` contract names.
+> applied **in place** and deployed fresh, no `-v2` contract names.
 
 ---
 
@@ -102,7 +102,7 @@ Run from the repo root; circuit steps run in WSL.
 #    Fund that address at https://explorer.hiro.so/sandbox/faucet?chain=testnet
 npx tsx scripts/deployment/new-wallet.ts
 
-# 1. Compile all 10 circuits (WSL). Do NOT use `bb write_vk` — step 2 handles vks.
+# 1. Compile all 10 circuits (WSL). Do NOT use `bb write_vk`, step 2 handles vks.
 for d in shield transfer withdraw split merge \
          sip10/shield sip10/transfer sip10/withdraw sip10/split sip10/merge; do
   ( cd zk/circuits/$d && nargo test && nargo compile )
@@ -142,7 +142,7 @@ npx tsx scripts/deployment/set-relayers.ts --status
 - Relayers: `RELAYER_ADDRESSES`, `RELAYER_DROP_DEPLOYER`, `RELAYER_REMOVE`
 
 > `AGGREGATION_RELAYER` / `RELAYER_ADDRESS` are read **only** by the one-time
-> wire/configure step. After deploy they are inert — the live relayer set is
+> wire/configure step. After deploy they are inert, the live relayer set is
 > controlled entirely by `set-relayers.ts` + `RELAYER_ADDRESSES`.
 
 ---
@@ -163,7 +163,7 @@ Removed leftovers seeded at setup time: `STGDS0Y17973EN5TCHNHGJJ9B31XWQ5YXBQ0KQ2
 `sip10-zk-verifier`). Final `get-relayer-count` on each verifier: **`u3`**.
 
 **What a relayer does:** the seated address is the only party that can call
-`submit-aggregation` — i.e. publish zkVerify aggregation roots on-chain so
+`submit-aggregation`, i.e. publish zkVerify aggregation roots on-chain so
 `verify-proof` can confirm a proof's public-inputs leaf is included under a
 published root. It is a **liveness** role only: it cannot forge a root, nor
 approve/reject/alter any user operation. Several relayers give redundancy (any
@@ -188,8 +188,8 @@ deployer, since ownership defaults to the deploying account) plus role grants
 | `register-asset`, `set-asset-enabled`, `set-asset-status`, `set-asset-limits` | `asset-registry` | protocol-admin (owner or role `u1`) |
 | `set-asset-fee-config`, `set-asset-fee-recipient` | `asset-registry` | fee-admin (owner or role `u4`) |
 | `add-relayer` / `remove-relayer` | `zk-verifier`, `sip10-zk-verifier` | verifier admin (owner) |
-| `withdraw-fees(token, amount)` | `sip10-protocol-fees` | registry owner — pays the asset's configured `fee-recipient` (not the caller) |
-| `withdraw-fees(amount, recipient)` | `protocol-fees` (STX) | registry owner — recipient is caller-chosen (any non-burn) |
+| `withdraw-fees(token, amount)` | `sip10-protocol-fees` | registry owner, pays the asset's configured `fee-recipient` (not the caller) |
+| `withdraw-fees(amount, recipient)` | `protocol-fees` (STX) | registry owner, recipient is caller-chosen (any non-burn) |
 | `collect-fee` | both fee contracts | the pool contracts only |
 | freeze/unfreeze fees + treasury | both fee contracts | emergency-admin (owner or emergency-admin role) |
 
@@ -208,17 +208,17 @@ registry ownership to a multisig.
 2. **Fund the 3 relayers + run their services**; set `STX_SHIELD_RELAYERS`.
 3. **Prove the fix + live end-to-end.**
    - *Proof-of-fix (circuit level):* `nargo test` in `zk/circuits/lib` and
-     `zk/circuits/sip10/lib` — the `should_fail` tests confirm a forged `new_root`
+     `zk/circuits/sip10/lib`, the `should_fail` tests confirm a forged `new_root`
      and a mismatched `leaf_index` cannot produce a valid proof.
    - ✅ *Live STX e2e PASSED (real testnet):* `scripts/testnet/sdk-e2e/run.ts`
-     `E2E_ASSETS=stx` — all 15 checks green (shield→transfer→split→merge→withdraw
+     `E2E_ASSETS=stx`, all 15 checks green (shield→transfer→split→merge→withdraw
      with real UltraHonk proofs; public-input arities 8/8/10/9/6 confirm v2), plus
      replay-protection + value-conservation. This is the definitive on-chain
      proof-of-fix.
    - Command used: `E2E_API_URL=http://localhost:8888 E2E_RELAYER_URL=http://localhost:8787
      E2E_ZKVERIFY_ENDPOINT=http://localhost:8787 E2E_ASSETS=stx npx tsx scripts/testnet/sdk-e2e/run.ts`
-     (`E2E_ZKVERIFY_ENDPOINT` is the relayer BASE url — the SDK appends `/submit`).
-   - ✅ *Live SIP-10 e2e PASSED (real testnet):* `E2E_ASSETS=sbtc,usdcx` — both
+     (`E2E_ZKVERIFY_ENDPOINT` is the relayer BASE url, the SDK appends `/submit`).
+   - ✅ *Live SIP-10 e2e PASSED (real testnet):* `E2E_ASSETS=sbtc,usdcx`, both
      assets 15/15 (arities 9/9/11/10/7 confirm SIP-10 v2) + cross-asset isolation.
      All three assets (STX/sBTC/USDCx) now validated end-to-end with real proofs.
      Note: per-asset shield limits are enforced (an out-of-range amount returns
@@ -226,7 +226,7 @@ registry ownership to a multisig.
      is 1000 sBTC).
    - **Gotchas hit + fixed (for next time):** (a) local relayer needs
      `ZKVERIFY_USE_API=false` (read-only RPC → `-32053`/500 on `/submit`); (b) the
-     API DB must be FRESH for a v2 relaunch — stale v1 commitments make the SDK
+     API DB must be FRESH for a v2 relaunch, stale v1 commitments make the SDK
      prove against the wrong tree → on-chain `u310`. Point the API at a new v2
      database and run `pnpm db:push` + `pnpm db:migrate:sip10`.
 4. ~~Refresh the Clarinet contract test suites to the v2 ABI~~ **DONE.** Updated the

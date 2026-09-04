@@ -162,7 +162,7 @@ is public, not part of the note. `merkle_index` is `[bool; 20]` (left/right path
 - **Incorrect public-input ordering:** the §4 table is the single source of
   truth; the pool's `inputs-hash` construction must match it field-for-field.
 - **Soundness assumptions:** UltraHonk soundness + BN254/Grumpkin hardness +
-  Poseidon collision resistance, identical to the audited STX family.
+  Poseidon collision resistance, identical to the native STX family.
 
 ---
 

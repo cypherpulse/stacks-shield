@@ -20,7 +20,7 @@ produce different, unlinkable commitments.
 
 ### Nullifier
 A deterministic value published when a note is spent, derived from the note's
-secret. Registering the same nullifier twice is rejected — this prevents
+secret. Registering the same nullifier twice is rejected, this prevents
 **double-spends** without revealing which note was spent.
 
 ### Viewing key
@@ -47,7 +47,7 @@ A field-element derived from a SIP-10 token's contract principal
 as a different asset. Native STX has no `asset_id`.
 
 ### Asset registry
-The on-chain contract (`asset-registry`) listing supported assets — uid, token
+The on-chain contract (`asset-registry`) listing supported assets, uid, token
 principal, decimals, limits, fee config. Adding a token needs only registration
 here; clients discover assets via the API's `/assets`.
 
@@ -81,7 +81,7 @@ operation's statement is included in a published root.
 ### Relayer
 A service that submits transfer/split/merge/withdraw **on the user's behalf**, so
 the operation lands from the relayer's address and the user never appears on
-chain. Trustless — it cannot alter a proven operation, only submit or withhold.
+chain. Trustless, it cannot alter a proven operation, only submit or withhold.
 
 ### Anonymity set
 The crowd of indistinguishable deposits/withdrawals a user hides among. Larger is
@@ -89,5 +89,5 @@ better; it bounds *practical* privacy regardless of the cryptography.
 
 ### Trial-decryption
 How a client finds its notes: it attempts to decrypt every ciphertext in the
-public feed with its viewing key and keeps the ones that decrypt — the server
+public feed with its viewing key and keeps the ones that decrypt, the server
 learns nothing about ownership.

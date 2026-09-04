@@ -1,6 +1,9 @@
-# Stacks Shield: A Multi-Asset Shielded-Pool Protocol for Stacks
+# Encrypted Zero-Knowledge for Private Peer-to-Peer Payments on Stacks
 
-**Testnet**
+*White Paper by John B Mukhwana*
+
+**Reference implementation:** Stacks Shield (proof of concept)
+**Network:** Stacks Testnet
 Deployer (v2, current): `ST18XMPE0PS5VNEEKB82BPW7NRZRHXEPH16JK8NN6`
 Deployer (v1, superseded): `ST2HXRZ8A82JJAP14KD83JEXNRCF34J67088WJSJH`
 
@@ -23,7 +26,7 @@ provided by zero-knowledge proofs (Noir circuits proven with UltraHonk) over a
 Merkle tree of Poseidon commitments, with nullifiers preventing double-spends and
 a relayer removing the last on-chain link between a user and their transactions.
 
-Because Clarity — the Stacks smart-contract language — cannot yet verify a
+Because Clarity, the Stacks smart-contract language, cannot yet verify a
 pairing-based SNARK natively, verification is delegated to the external
 **zkVerify** network, which verifies each proof off chain and aggregates it into
 a Merkle root; the on-chain contracts check only cheap **aggregation inclusion**.
@@ -37,7 +40,7 @@ verification dependency.
 
 Public blockchains expose every balance and transfer. On Stacks, an observer sees
 exactly how much STX or how many SIP-10 tokens an address holds, and every
-movement between addresses. This is often unacceptable — for payroll, treasury
+movement between addresses. This is often unacceptable, for payroll, treasury
 operations, trading, or simply personal financial privacy.
 
 **Shielded-pool** designs (as pioneered by Zerocash/Zcash and adapted by systems
@@ -60,12 +63,11 @@ Shield brings this model to Stacks, with two properties that shape the design:
 **Stacks & Clarity.** Stacks is a Bitcoin-anchored L1 whose contracts are written
 in Clarity, a decidable, non-Turing-complete language. Clarity exposes hashes
 (`sha256`, `keccak256`, …), `secp256k1` signature verification, and (Clarity 6) a
-native Bitcoin-style Merkle-inclusion check — but no BN254/BLS pairings and only
+native Bitcoin-style Merkle-inclusion check, but no BN254/BLS pairings and only
 128-bit integers.
 
 **Notes and commitments.** A *note* represents a private balance:
-`{ amount, owner keypair, blinding }`. Its public fingerprint is a *commitment* —
-a collision-resistant hash that reveals nothing about its contents. The chain
+`{ amount, owner keypair, blinding }`. Its public fingerprint is a *commitment*, a collision-resistant hash that reveals nothing about its contents. The chain
 stores only commitments.
 
 **Nullifiers.** Spending a note publishes a deterministic *nullifier* derived
@@ -74,8 +76,8 @@ double-spends without revealing which note was spent.
 
 **Zero-knowledge proofs.** Each operation is proven with a Noir circuit compiled
 to **UltraHonk** (Aztec's Barretenberg proof system). A proof attests that the
-operation is valid — ownership, membership, value conservation, well-formed
-nullifiers/commitments — without revealing the witness.
+operation is valid, ownership, membership, value conservation, well-formed
+nullifiers/commitments, without revealing the witness.
 
 ---
 
@@ -98,7 +100,7 @@ random field element that makes commitments to equal amounts indistinguishable.
 
 ### 3.2 Merkle tree
 
-All commitments — across **all assets** — are inserted into a single,
+All commitments, across **all assets**, are inserted into a single,
 asset-agnostic **Merkle tree** maintained by the registry. Its root is published
 on chain. Every spend proves Merkle membership of its input commitment under a
 known root. Sharing one tree keeps the anonymity set unified rather than split
@@ -130,9 +132,10 @@ amounts; transfer/split/merge move only commitments and nullifiers.
 Zero-knowledge hides *what* moved, but the transaction still has an on-chain
 *sender*. To close that gap, transfer/split/merge/withdraw are submitted by a
 **relayer**: the operation lands from the relayer's address, so the user never
-appears on chain. The relayer is **trustless** — every parameter (amount,
-recipient, asset, commitments, root) is bound into the proof, so the relayer can
-choose to submit or not, but can never alter the operation.
+appears on chain. The submitting relayer cannot alter the operation: every parameter
+(amount, recipient, asset, commitments, root) is bound into the proof, so the relayer
+can choose to submit or not. Publishing the aggregation root on chain is a separate
+role that is currently trusted, not trustless.
 
 ---
 
@@ -149,9 +152,9 @@ current cost budgets.
 Instead, a proof is submitted to **zkVerify** (a specialised verification L1),
 which verifies it and **aggregates** many verified statements into a Merkle root.
 A relayer publishes that root on chain via `submit-aggregation`. The verifier
-contract then accepts an operation only if its **statement** — a keccak hash
+contract then accepts an operation only if its **statement**, a keccak hash
 binding the registered verification-key hash, the circuit version, and the
-canonical public inputs (including `asset_id` for SIP-10) — is a **member of a
+canonical public inputs (including `asset_id` for SIP-10), is a **member of a
 published aggregation root**. This is a hash-path check Clarity performs cheaply.
 
 Change any parameter and the statement changes, so it is no longer in any
@@ -163,28 +166,27 @@ aggregation roots persist across Stacks testnet resets.
 This is an explicit **v1 trust delegation**: the contracts trust zkVerify's
 verification and check only inclusion. It is a real trust/liveness dependency,
 and the primary direction of future work is to move verification onto Stacks
-itself. [§9](#9-toward-native-zk-verification-on-stacks) sets out that path —
-from a self-hosted, federated verifier to fully native on-chain verification.
+itself. [§9](#9-toward-native-zk-verification-on-stacks) sets out that path, from a self-hosted, federated verifier to fully native on-chain verification.
 
 ---
 
 ## 5. Multi-asset extension (SIP-10)
 
-The multi-asset layer is **purely additive**: the audited native STX protocol is
+The multi-asset layer is **purely additive**: the native STX protocol is
 frozen and untouched; SIP-10 support is a separate set of contracts that reuse
 the frozen `privacy-registry` and `note-manager`.
 
 - **Asset registry.** `asset-registry` is the on-chain source of truth for
   supported assets: uid, token principal, decimals, shield limits, per-asset fee
   configuration and fee recipient. Adding a new token requires **only on-chain
-  registration** — no SDK or contract change. Clients discover assets through the
+  registration**: no SDK or contract change. Clients discover assets through the
   API's `/assets` endpoint.
 - **One pool.** `sip10-pool` handles shield/transfer/split/merge/withdraw for
   every registered asset, routing by uid.
 - **Asset-bound commitments** (§3.1) provide isolation: assets share one tree but
   can never cross.
 - **Conservation invariant (per asset).** For each asset A,
-  `token_A.balance(pool) == shielded-total[A]` — shield adds to both, withdraw
+  `token_A.balance(pool) == shielded-total[A]`, shield adds to both, withdraw
   subtracts from both. This defends against malicious or fee-on-transfer tokens:
   the pool asserts the balance delta equals the claimed amount.
 
@@ -231,7 +233,7 @@ deploy malicious tokens; a malicious relayer; and a curious indexer/API operator
 - **No double-spend / replay.** Three independent append-only guards: registry
   nullifiers, note-state transitions, and per-aggregation verifier records.
 - **Value conservation.** Enforced in-circuit, and reinforced on chain by the
-  per-pool conservation invariant, which runs *before* any funds move — a pool
+  per-pool conservation invariant, which runs *before* any funds move, a pool
   can never pay out more than is shielded.
 - **Authority delegation.** Only the registry stores ownership, roles, and the
   authorized-caller allowlist; every protected write is gated by
@@ -243,8 +245,13 @@ deploy malicious tokens; a malicious relayer; and a curious indexer/API operator
   (ACTIVE/PAUSED/EMERGENCY/UPGRADING/DEPRECATED) composes with per-contract
   freezes and per-operation switches. Roots, vkeys, and notes can be frozen.
 
-**Relayer trust.** Liveness only. A relayer cannot alter operations, but can
-censor. Decentralising the relayer set removes this as a chokepoint (§9).
+**Relayer trust.** Two roles. The relayer that submits an operation affects liveness
+only: it cannot alter an operation, but it can censor, and decentralising the relayer
+set removes that chokepoint (§9). The relayer that publishes the zkVerify aggregation
+root on chain is a separate, currently trusted role: a compromised or malicious
+publisher is a real trust assumption, so root publication is not yet trustless. It
+runs today through a small dedicated relayer set (not the deployer), and a threshold
+(M-of-N) publisher scheme run by independent operators is planned to remove it.
 
 ---
 
@@ -255,7 +262,7 @@ censor. Decentralising the relayer set removes this as a chokepoint (§9).
   helps, but current usage is low, so *practical* privacy is limited regardless
   of the cryptography.
 - **Delegated verification.** Verification runs on zkVerify, not in Stacks
-  consensus — a real trust/liveness dependency (§4.3, §9).
+  consensus, a real trust/liveness dependency (§4.3, §9).
 - **Transparent edges.** Shield and withdraw amounts and addresses are public;
   privacy is strongest with a busy pool, common denominations, and time between
   deposit and withdrawal.
@@ -269,7 +276,7 @@ proofs themselves, so Stacks Shield no longer depends on any external chain for
 verification. Because Clarity cannot yet verify a pairing-based SNARK (§4.1), we
 reach that destination in stages, in order of feasibility:
 
-1. **Interim — a self-hosted, federated verifier.** Move verification in-house:
+1. **Interim, a self-hosted, federated verifier.** Move verification in-house:
    N independent nodes each verify the proof off chain and co-sign the
    aggregation root; the contract checks M-of-N `secp256k1` signatures (native)
    plus native `verify-merkle-proof` inclusion. No circuit rewrite; trust is
@@ -278,11 +285,11 @@ reach that destination in stages, in order of feasibility:
 2. **Native Groth16, via a Clarity pairing precompile.** If Clarity gains
    BN254/BLS pairing operations (as Ethereum, Stellar and Cardano already have),
    switch the proving system to Groth16 and verify its single pairing check on
-   chain — fully native and trustless. The existing circuit-version upgrade path
+   chain, fully native and trustless. The existing circuit-version upgrade path
    supports this migration with no storage or API breakage.
 3. **Native STARKs.** Hash-based proofs need no pairings, and a Goldilocks field
    fits Clarity's 128-bit integers, making a **native on-chain FRI verifier** the
-   only pairing-free route — gated by on-chain cost, likely using recursion to
+   only pairing-free route, gated by on-chain cost, likely using recursion to
    shrink the final check. This needs no new Clarity primitive at all.
 
 Independently, decentralising the relayer removes the sender-privacy liveness
@@ -295,7 +302,7 @@ dependency, completing a self-contained protocol that lives entirely on Stacks.
 Stacks Shield demonstrates a working, multi-asset shielded-pool protocol on
 Stacks: STX, sBTC and USDCx move privately through one pool, with cryptographic
 asset isolation, per-asset conservation, user-paid private fees, and relayer-based
-sender anonymity — all while leaving the frozen native protocol untouched. The
+sender anonymity, all while leaving the frozen native protocol untouched. The
 principal open problem is trust-minimising verification; the delegation to
 zkVerify is a deliberate, documented v1 choice with a concrete removal path. As
 Clarity's cryptographic surface grows, native verification becomes the endgame.
@@ -304,7 +311,7 @@ Clarity's cryptographic surface grows, native verification becomes the endgame.
 
 ## References & further reading
 
-- [`README.md`](../README.md) — project overview with system diagrams
+- [`README.md`](../README.md), project overview with system diagrams
 - [`docs/architecture.md`](architecture.md) · [`docs/privacy-model.md`](privacy-model.md) · [`docs/security.md`](security.md)
 - [`docs/getting-started.md`](getting-started.md) · [`docs/api-reference.md`](api-reference.md) · [`docs/glossary.md`](glossary.md)
 - Zerocash / Zcash protocol specification; Aztec Barretenberg (UltraHonk); [zkVerify](https://zkverify.io)

@@ -4,7 +4,7 @@ The Stacks Shield API is a **read-only indexer** over the on-chain protocol, plu
 an authenticated per-wallet namespace for encrypted-note storage. It never holds
 amounts, secrets, viewing keys, or nullifier→commitment links.
 
-> Most integrators don't call this directly — the [`@stacks-shield/sdk`](../sdk/README.md)
+> Most integrators don't call this directly, the [`@stacks-shield/sdk`](../sdk/README.md)
 > wraps every endpoint. This reference is for building your own client or
 > dashboard.
 
@@ -43,7 +43,7 @@ units.
 ```
 
 ### `GET /commitments`
-All on-chain commitments in leaf-index order — clients rebuild the Merkle tree
+All on-chain commitments in leaf-index order, clients rebuild the Merkle tree
 from this to produce membership proofs.
 
 ```json
@@ -84,7 +84,7 @@ sign-in-with-Stacks flow yielding a bearer token.
 | `POST /me/notes/{commitment}/spent` | mark a note spent |
 
 The stored payload is always **ciphertext** encrypted to the owner's viewing key
-plus public locators — safe at rest, exactly like the public feed.
+plus public locators, safe at rest, exactly like the public feed.
 
 ## Notes
 

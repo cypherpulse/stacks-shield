@@ -1,6 +1,6 @@
 # Getting started
 
-Set up Stacks Shield locally — run the contract tests, and (optionally) the
+Set up Stacks Shield locally, run the contract tests, and (optionally) the
 services and frontend. For how the pieces fit together see
 [architecture](architecture.md).
 
@@ -14,7 +14,7 @@ services and frontend. For how the pieces fit together see
 | **PostgreSQL** | the API + indexer | only to run `services/api` |
 | **Redis** | the relayer | only to run `services/relayer` (BullMQ) |
 
-You can do a lot with just Node + pnpm + Clarinet — the contract test suites need
+You can do a lot with just Node + pnpm + Clarinet, the contract test suites need
 nothing else.
 
 ## Install
@@ -59,7 +59,7 @@ More: [`sdk/README.md`](../sdk/README.md).
 ## Services (optional)
 
 Both read config from a local `.env` (see each service directory for the
-required variables — never commit secrets).
+required variables, never commit secrets).
 
 ```bash
 # API + indexer (needs PostgreSQL)
@@ -107,10 +107,10 @@ register-assets → verify).
 
 ## Troubleshooting
 
-- **"note commitment not on chain yet" / balances show 0** — the indexer is
+- **"note commitment not on chain yet" / balances show 0**: the indexer is
   behind or a migration wasn't applied. For a SIP-10 DB run `migrate-sip10` then
   `reset-indexer`, and confirm the API is caught up to the chain tip.
-- **Vite: "does not provide an export …"** — stale dep cache after an SDK rebuild:
+- **Vite: "does not provide an export …"**: stale dep cache after an SDK rebuild:
   `rm -rf frontend/node_modules/.vite` and restart.
-- **Frontend looks STX-only** — the API it points at doesn't serve `/assets`
+- **Frontend looks STX-only**: the API it points at doesn't serve `/assets`
   (old build). Point `VITE_API_URL` at a SIP-10-enabled API and restart.

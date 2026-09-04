@@ -19,9 +19,9 @@ We consider:
 
 - **Confidentiality.** Commitments, nullifiers, and encrypted payloads reveal no
   amount, owner, or linkage (see [privacy model](privacy-model.md)).
-- **No forgery.** An operation is accepted only if a valid proof's statement — a
+- **No forgery.** An operation is accepted only if a valid proof's statement, a
   keccak hash binding the vkey hash, version, and canonical public inputs
-  (including `asset_id`) — is included in a published aggregation. Any parameter
+  (including `asset_id`), is included in a published aggregation. Any parameter
   change invalidates the statement.
 - **No double-spend / replay.** Three independent append-only guards:
   1. registry **nullifiers** (a nullifier registers exactly once),
@@ -61,20 +61,31 @@ We consider:
    trust and **liveness** dependency. The roadmap to native, on-chain
    verification is in the
    [whitepaper §9](whitepaper.md#9-toward-native-zk-verification-on-stacks).
-2. **Relayer liveness.** A single relayer is a censorship/liveness chokepoint (it
-   cannot steal or alter). Decentralising the relayer set removes this.
+2. **Relayer roles differ in trust.** The *operation-submitting* relayer is
+   trust-minimized, it is a censorship/liveness chokepoint only and cannot change
+   an operation's amount, recipient, asset, or commitments. The
+   *aggregation-publishing* relayer, however, publishes the zkVerify aggregation
+   root on-chain, and that publication is currently a **trusted role**: a
+   compromised or malicious authorized publisher is a load-bearing trust
+   assumption, not a trustless guarantee. On-chain root publication is **not yet
+   trustless.** It is run today by a small dedicated relayer set (not the deployer);
+   a threshold (**M-of-N**) publisher scheme run by independent operators is planned
+   to remove it. See finding **H-1** in the [security review](../audits/security-review.md).
 3. **Deployer keys.** The registry owner holds governance/upgrade authority.
    Standard operational key-management assumptions apply.
 
 ## Assurance status
 
-- **Not audited.** No third-party security audit has been performed.
+- **Internally reviewed, not independently audited.** See the
+  [security review](../audits/security-review.md) for the findings and their remediation
+  status. This is an internal review by the protocol team. It is **not** a substitute
+  for an independent third-party audit, which is required before any mainnet deployment.
 - **Testnet only.** Not deployed to mainnet.
 - Validated by a layered test suite (contract unit/attack/fuzz, integration,
-  privacy, SDK, and live real-proof end-to-end for STX, USDCx and sBTC) — but
+  privacy, SDK, and live real-proof end-to-end for STX, USDCx and sBTC), but
   tests are not a substitute for an audit.
 
-Report a vulnerability privately — see [SECURITY.md](../SECURITY.md) — before any
+Report a vulnerability privately, see [SECURITY.md](../SECURITY.md), before any
 public disclosure.
 
 See also: [privacy model](privacy-model.md) · [architecture](architecture.md) ·
