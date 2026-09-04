@@ -3,9 +3,23 @@ export const MICRO_PER_STX = 1_000_000;
 export const NETWORK = "testnet" as const;
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "https://stx-shield-api.onrender.com";
-export const RELAYER_URL =
-  import.meta.env.VITE_RELAYER_URL ?? "https://stx-shield-relayer.onrender.com";
-// The zkVerify submitter is the relayer's POST /submit endpoint. Defaults to the
+
+// One or more relayer base URLs. Set VITE_RELAYER_URLS to a comma-separated list to
+// spread operation submission across all three relayers (the SDK fails over across
+// the array). VITE_RELAYER_URL (single) still works as a fallback.
+export const RELAYER_URLS: string[] = (
+  import.meta.env.VITE_RELAYER_URLS ??
+  import.meta.env.VITE_RELAYER_URL ??
+  "https://stx-shield-relayer.onrender.com"
+)
+  .split(",")
+  .map((u: string) => u.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
+// The first relayer is the single-URL consumer (the zkVerify proof submitter).
+export const RELAYER_URL = RELAYER_URLS[0] ?? "https://stx-shield-relayer.onrender.com";
+
+// The zkVerify submitter is a relayer's POST /submit endpoint. Defaults to the first
 // relayer so proofs are submitted through it (browsers never hold a zkVerify seed).
 export const ZKVERIFY_URL = import.meta.env.VITE_ZKVERIFY_URL ?? RELAYER_URL;
 

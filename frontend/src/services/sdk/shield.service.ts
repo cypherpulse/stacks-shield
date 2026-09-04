@@ -1,7 +1,7 @@
 import { STXShield, localStorageVault } from "@stacks-shield/sdk";
 import { createWebEngine } from "@stacks-shield/sdk/web";
 
-import { API_URL, NETWORK, RELAYER_URL, ZKVERIFY_URL } from "@/shared/constants/protocol";
+import { API_URL, NETWORK, RELAYER_URLS, ZKVERIFY_URL } from "@/shared/constants/protocol";
 import type { STXShieldClient, WalletSigner } from "@/shared/types/shield";
 
 /**
@@ -43,7 +43,7 @@ export class ShieldService {
     const client = new STXShield({
       network: NETWORK,
       apiUrl: API_URL,
-      relayerUrls: [RELAYER_URL],
+      relayerUrls: RELAYER_URLS,
       proofEngine: createWebEngine({ artifactsBaseUrl: "/circuits", threads: threadCount() }),
       // Local durability: a note's blinding lives only in its encrypted payload,
       // so if the API write fails (or the tab refreshes before it syncs) the note
